@@ -21,5 +21,6 @@ class LogsDBRouter():
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if app_label == self.LOG_APP_NAME:
-            return db == self.LOG_APP_DB_ALIAS
+            if db != self.LOG_APP_DB_ALIAS:
+                return None
         return None
