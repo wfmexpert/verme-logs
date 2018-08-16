@@ -23,4 +23,5 @@ class LogsDBRouter():
         if app_label == self.LOG_APP_NAME:
             if db != self.LOG_APP_DB_ALIAS:
                 return None
+            return True
         return None
