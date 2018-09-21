@@ -1,7 +1,8 @@
+import json
 from django import forms
+from django.contrib.postgres.forms.jsonb import InvalidJSONInput, JSONField
 
 from .models import ServerRecord
-from django.contrib.postgres.forms.jsonb import InvalidJSONInput, JSONField
 
 class JSONFormattedField(JSONField):
     def prepare_value(self, value):
