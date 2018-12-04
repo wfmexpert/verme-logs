@@ -78,7 +78,10 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
-                worksheet.write(row, idx, str(getattr(item, field.name)))
+                attr_value = getattr(item, field.name)
+                if type(attr_value, object):
+                    attr_value = attr_value.code
+                worksheet.write(row, idx, str(attr_value))
             row += 1
 
         workbook.close()
