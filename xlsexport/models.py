@@ -28,23 +28,31 @@ class ExportTemplate(models.Model):
         verbose_name = 'Шаблон отчета'
         verbose_name_plural = 'Шаблоны отчетов'
 
-    def to_export(self):
+    def to_export(self, queryset=None):
         if self.format == 'xlsx':
-            return self.to_xlsx()
+            return self.to_xlsx(queryset)
         elif self.format == 'xls':
-            return self.to_xlsx()
+            return self.to_xlsx(queryset)
         elif self.format == 'csv':
-            return self.to_xlsx()
+            return self.to_xlsx(queryset)
         return None
 
-    def get_fields_queryset(self):
+    def get_model(self):
         model = apps.get_model(*(self.model.split('.', 1)))
-        fields = model._meta.get_fields()
-        queryset = model.objects.all()
-        return fields, queryset
+        return model
 
-    def to_xlsx(self):
-        fields, queryset = self.get_fields_queryset()
+    def get_model_fields(self):
+        fields = self.get_model()._meta.get_fields()
+        return fields
+
+    def get_queryset(self, queryset=None):
+        if not queryset:
+            queryset = self.get_model().objects.all()
+        return queryset
+
+    def to_xlsx(self, queryset=None):
+        fields = self.get_model_fields()
+        queryset = self.get_queryset(queryset)
 
         # Create an in-memory output file for the new workbook.
         output = io.BytesIO()
@@ -62,7 +70,7 @@ class ExportTemplate(models.Model):
         for idx, field in enumerate(fields):
             print(idx, field)
             worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
-            worksheet.write(f'{letters[idx]}{idx}', f'{field.name}', bold)
+            worksheet.write(f'{letters[idx]}1', f'{field.name}', bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1
@@ -70,7 +78,7 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
-                worksheet.write(row, idx, getattr(item, field.name))
+                worksheet.write(row, idx, str(getattr(item, field.name)))
             row += 1
 
         workbook.close()
@@ -81,5 +89,6 @@ class ExportTemplate(models.Model):
         # Construct a server response.
         response = HttpResponse(output.read(),
                                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        filename = self.params.get('filename', self.code)
         response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
         return response
