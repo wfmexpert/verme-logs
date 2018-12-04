@@ -70,7 +70,7 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
-                worksheet.write(row, idx, getattr(item, field))
+                worksheet.write(row, idx, getattr(item, field.name))
             row += 1
 
         workbook.close()
