@@ -29,7 +29,7 @@ class ExportTemplate(models.Model):
         verbose_name_plural = 'Шаблоны отчетов'
 
     def to_export(self):
-        if self.format == 'xls':
+        if self.format == 'xlsx':
             return self.to_xlsx()
         elif self.format == 'xls':
             return self.to_xlsx()
