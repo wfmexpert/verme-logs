@@ -2,6 +2,7 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.apps import apps
 from django.http import HttpResponse
+from datetime import datetime, date
 
 import xlsxwriter
 import io
@@ -72,7 +73,6 @@ class ExportTemplate(models.Model):
 
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(fields):
-            print(idx, field)
             if not param_fields:
                 worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
                 worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
@@ -95,6 +95,8 @@ class ExportTemplate(models.Model):
                     attr_value = getattr(item, field_name[0])
                     for x in range(1, len(field_name)):
                         attr_value = getattr(attr_value, field_name[x])
+                if isinstance(attr_value, datetime):
+                    attr_value = attr_value.astimezone()
                 worksheet.write(row, idx, str(attr_value))
             row += 1
 
