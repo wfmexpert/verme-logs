@@ -15,7 +15,7 @@ from django.utils.timezone import make_naive
 from .forms import ServerRecordForm
 from .models import ClientRecord, ServerRecord
 from .utils import XLSWriterUtil
-
+from xlsexport.methods import get_report_by_code
 
 @staff_member_required
 def delete_all_client_records_view(request):
@@ -84,12 +84,13 @@ class ServerRecordAdmin(admin.ModelAdmin):
     html_message.short_description = 'Описание'
 
     def make_report(self, request, queryset):
-        content = ServerRecordXLS(queryset[:65000]).generate_as_buffer()
-        response = StreamingHttpResponse(content, content_type='application/vnd.ms-excel')
-        today = make_naive(timezone.now()).strftime('%Y%m%d.%H%M%S')
-        filename = 'serverrecord.%s.xls' % today
-        response["Content-Disposition"] = f"attachment; filename*=UTF-8''{urlquote(filename)}"
-        return response
+        return get_report_by_code('serverrecord', queryset)
+        #content = ServerRecordXLS(queryset[:65000]).generate_as_buffer()
+        #response = StreamingHttpResponse(content, content_type='application/vnd.ms-excel')
+        #today = make_naive(timezone.now()).strftime('%Y%m%d.%H%M%S')
+        #filename = 'serverrecord.%s.xls' % today
+        #response["Content-Disposition"] = f"attachment; filename*=UTF-8''{urlquote(filename)}"
+        #return response
     make_report.short_description = 'Выгрузить в Excel'
 
     def duration_rounded(self, obj):
