@@ -89,6 +89,7 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
+                cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
                     if isinstance(field, models.ForeignKey):
@@ -101,8 +102,15 @@ class ExportTemplate(models.Model):
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):
-                        attr_value = datetime.strptime(attr_value, field.get('format'))
-                worksheet.write(row, idx, str(attr_value))
+                        attr_value = attr_value.strftime(field.get('format'))
+                if isinstance(attr_value, float):
+                    if param_fields and field.get('format'):
+                        cell_format = workbook.add_format()
+                        cell_format.set_num_format(field.get('format'))
+                if not cell_format:
+                    worksheet.write(row, idx, str(attr_value))
+                else:
+                    worksheet.write(row, idx, str(attr_value), cell_format)
             row += 1
 
         workbook.close()
@@ -143,6 +151,7 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
+                cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
                     if isinstance(field, models.ForeignKey):
@@ -157,8 +166,15 @@ class ExportTemplate(models.Model):
                     if isinstance(attr_value, datetime):
                         attr_value = attr_value.astimezone()
                         if param_fields and field.get('format'):
-                            attr_value = datetime.strptime(attr_value, field.get('format'))
-                worksheet.write(row, idx, str(attr_value))
+                            attr_value = attr_value.strftime(field.get('format'))
+                    if isinstance(attr_value, float):
+                        if param_fields and field.get('format'):
+                            cell_format = workbook.add_format()
+                            cell_format.set_num_format(field.get('format'))
+                    if not cell_format:
+                        worksheet.write(row, idx, str(attr_value))
+                    else:
+                        worksheet.write(row, idx, str(attr_value), cell_format)
             row += 1
 
         workbook.save(output)
