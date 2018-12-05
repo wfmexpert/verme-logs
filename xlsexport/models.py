@@ -48,6 +48,8 @@ class ExportTemplate(models.Model):
     def get_queryset(self, queryset=None):
         if not queryset:
             queryset = self.get_model().objects.all()
+        if self.queryset:
+            queryset = queryset.filter(**self.queryset)
         return queryset
 
     def to_xlsx(self, queryset=None):
