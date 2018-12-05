@@ -163,10 +163,8 @@ class ExportTemplate(models.Model):
                         attr_value = getattr(attr_value, field_name[x])
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
-                    if isinstance(attr_value, datetime):
-                        attr_value = attr_value.astimezone()
-                        if param_fields and field.get('format'):
-                            attr_value = attr_value.strftime(field.get('format'))
+                    if param_fields and field.get('format'):
+                        attr_value = attr_value.strftime(field.get('format'))
                 if isinstance(attr_value, float):
                     if param_fields and field.get('format'):
                         cell_format = xlwt.XFStyle()
