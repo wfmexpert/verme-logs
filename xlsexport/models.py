@@ -169,8 +169,8 @@ class ExportTemplate(models.Model):
                             attr_value = attr_value.strftime(field.get('format'))
                     if isinstance(attr_value, float):
                         if param_fields and field.get('format'):
-                            cell_format = workbook.add_format()
-                            cell_format.set_num_format(field.get('format'))
+                            cell_format = xlwt.XFStyle()
+                            cell_format.num_format_str(field.get('format'))
                     if not cell_format:
                         worksheet.write(row, idx, str(attr_value))
                     else:
