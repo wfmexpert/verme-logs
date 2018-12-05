@@ -4,7 +4,7 @@ from django.apps import apps
 from django.http import HttpResponse
 from datetime import datetime, date
 
-import xlsxwriter
+import xlsxwriter, xlwt
 import io
 import string
 
@@ -46,6 +46,11 @@ class ExportTemplate(models.Model):
         fields = self.get_model()._meta.get_fields()
         return fields
 
+    def get_param_fields(self):
+        param_fields = self.params.get('fields')
+        fields = param_fields or self.get_model_fields()
+        return param_fields, fields
+
     def get_queryset(self, queryset=None):
         if not queryset:
             queryset = self.get_model().objects.all()
@@ -54,9 +59,7 @@ class ExportTemplate(models.Model):
         return queryset
 
     def to_xlsx(self, queryset=None):
-        param_fields = self.params.get('fields')
-        fields = param_fields or self.get_model_fields()
-
+        param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
         # Create an in-memory output file for the new workbook.
@@ -64,7 +67,7 @@ class ExportTemplate(models.Model):
 
         # Create a workbook and add a worksheet.
         workbook = xlsxwriter.Workbook(output, {'in_memory': True})
-        worksheet = workbook.add_worksheet()
+        worksheet = workbook.add_worksheet(self.code)
 
         # Add a bold format to use to highlight cells.
         bold = workbook.add_format({'bold': True})
@@ -110,4 +113,60 @@ class ExportTemplate(models.Model):
                                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         filename = self.params.get('filename', self.code)
         response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
+        return response
+
+    def to_xls(self, queryset=None):
+        param_fields, fields = self.get_param_fields()
+        queryset = self.get_queryset(queryset)
+
+        # Create an in-memory output file for the new workbook.
+        output = io.BytesIO()
+
+        # Create a workbook and add a worksheet.
+        workbook = xlwt.Workbook(encoding='utf-8', style_compression=2)
+        worksheet = workbook.add_sheet(self.code, cell_overwrite_ok=False)
+
+        bold = xlwt.easyxf('font: bold on')
+
+        # Установка ширины колонок и заполнение заголовков
+        for idx, field in enumerate(fields):
+            if not param_fields:
+                #worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
+                #worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
+                worksheet.write(0, idx, field.verbose_name, bold)
+            else:
+                #worksheet.set_column(f'{letters[idx]}:{letters[idx]}', field.get("width", 15))
+                #worksheet.write(f'{letters[idx]}1', f'{field.get("name")}', bold)
+                worksheet.write(0, idx, field.get("name"), bold)
+
+        # Start from the first cell. Rows and columns are zero indexed.
+        row = 1
+
+        # Iterate over the data and write it out row by row.
+        for item in queryset:
+            for idx, field in enumerate(fields):
+                if not param_fields:
+                    attr_value = getattr(item, field.name)
+                    if isinstance(field, models.ForeignKey):
+                        attr_value = getattr(attr_value, 'code')
+                else:
+                    field_name = field.get('field').split('.')
+                    attr_value = getattr(item, field_name[0])
+                    for x in range(1, len(field_name)):
+                        attr_value = getattr(attr_value, field_name[x])
+                if isinstance(attr_value, datetime):
+                    attr_value = attr_value.astimezone()
+                worksheet.write(row, idx, str(attr_value))
+            row += 1
+
+        workbook.save(output)
+
+        # Rewind the buffer.
+        output.seek(0)
+
+        # Construct a server response.
+        response = HttpResponse(output.read(),
+                                content_type='application/vnd.ms-excel')
+        filename = self.params.get('filename', self.code)
+        response['Content-Disposition'] = f'attachment; filename="{filename}.xls"'
         return response
