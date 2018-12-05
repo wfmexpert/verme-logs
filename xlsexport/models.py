@@ -167,13 +167,13 @@ class ExportTemplate(models.Model):
                         attr_value = attr_value.astimezone()
                         if param_fields and field.get('format'):
                             attr_value = attr_value.strftime(field.get('format'))
-                    if isinstance(attr_value, float):
-                        if param_fields and field.get('format'):
-                            cell_format = {'num_format_str': field.get('format')}
-                    if not cell_format:
-                        worksheet.write(row, idx, str(attr_value))
-                    else:
-                        worksheet.write(row, idx, str(attr_value), cell_format)
+                if isinstance(attr_value, float):
+                    if param_fields and field.get('format'):
+                        cell_format = {'num_format_str': field.get('format')}
+                if not cell_format:
+                    worksheet.write(row, idx, str(attr_value))
+                else:
+                    worksheet.write(row, idx, str(attr_value), cell_format)
             row += 1
 
         workbook.save(output)
