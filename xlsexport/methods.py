@@ -1,3 +1,4 @@
+from django.http import JsonResponse
 from .models import ExportTemplate
 
 
@@ -10,6 +11,5 @@ def get_report_by_code(code=None, queryset=None):
 
     template = ExportTemplate.objects.filter(code=code).first()
     if not template:
-        return None
-
+        return JsonResponse({"non_field_errors": "Не найден отчет с указанным кодом"})
     return template.to_export(queryset)

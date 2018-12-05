@@ -100,6 +100,8 @@ class ExportTemplate(models.Model):
                         attr_value = getattr(attr_value, field_name[x])
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
+                    if param_fields and field.get('format'):
+                        attr_value = datetime.strptime(attr_value, field.get('format'))
                 worksheet.write(row, idx, str(attr_value))
             row += 1
 
@@ -117,7 +119,7 @@ class ExportTemplate(models.Model):
 
     def to_xls(self, queryset=None):
         param_fields, fields = self.get_param_fields()
-        queryset = self.get_queryset(queryset)
+        queryset = self.get_queryset(queryset)[:65000]
 
         # Create an in-memory output file for the new workbook.
         output = io.BytesIO()
@@ -131,12 +133,8 @@ class ExportTemplate(models.Model):
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(fields):
             if not param_fields:
-                #worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
-                #worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
                 worksheet.write(0, idx, field.verbose_name, bold)
             else:
-                #worksheet.set_column(f'{letters[idx]}:{letters[idx]}', field.get("width", 15))
-                #worksheet.write(f'{letters[idx]}1', f'{field.get("name")}', bold)
                 worksheet.write(0, idx, field.get("name"), bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
@@ -156,6 +154,10 @@ class ExportTemplate(models.Model):
                         attr_value = getattr(attr_value, field_name[x])
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
+                    if isinstance(attr_value, datetime):
+                        attr_value = attr_value.astimezone()
+                        if param_fields and field.get('format'):
+                            attr_value = datetime.strptime(attr_value, field.get('format'))
                 worksheet.write(row, idx, str(attr_value))
             row += 1
 
