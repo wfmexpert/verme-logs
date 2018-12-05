@@ -110,7 +110,7 @@ class ExportTemplate(models.Model):
                 if not cell_format:
                     worksheet.write(row, idx, str(attr_value))
                 else:
-                    worksheet.write(row, idx, str(attr_value), cell_format)
+                    worksheet.write(row, idx, attr_value, cell_format)
             row += 1
 
         workbook.close()
@@ -174,7 +174,7 @@ class ExportTemplate(models.Model):
                 if not cell_format:
                     worksheet.write(row, idx, str(attr_value))
                 else:
-                    worksheet.write(row, idx, str(attr_value), cell_format)
+                    worksheet.write(row, idx, attr_value, cell_format)
             row += 1
 
         workbook.save(output)
