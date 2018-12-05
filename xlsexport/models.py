@@ -51,7 +51,9 @@ class ExportTemplate(models.Model):
         return queryset
 
     def to_xlsx(self, queryset=None):
-        fields = self.get_model_fields()
+        param_fields = self.params.get('fields')
+        fields = param_fields or self.get_model_fields()
+
         queryset = self.get_queryset(queryset)
 
         # Create an in-memory output file for the new workbook.
@@ -69,8 +71,12 @@ class ExportTemplate(models.Model):
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(fields):
             print(idx, field)
-            worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
-            worksheet.write(f'{letters[idx]}1', f'{field.name}', bold)
+            if not param_fields:
+                worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
+                worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
+            else:
+                worksheet.set_column(f'{letters[idx]}:{letters[idx]}', field.get("width", 15))
+                worksheet.write(f'{letters[idx]}1', f'{field.get("name")}', bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1
@@ -78,9 +84,15 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
-                attr_value = getattr(item, field.name)
-                if type(attr_value, object):
-                    attr_value = attr_value.code
+                if not param_fields:
+                    attr_value = getattr(item, field.name)
+                    if isinstance(field, models.ForeignKey):
+                        attr_value = getattr(attr_value, 'code')
+                else:
+                    field_name = field.get('field').split('.')
+                    attr_value = getattr(item, field_name[0])
+                    for x in range(1, len(field_name)):
+                        attr_value = getattr(attr_value, field_name[x])
                 worksheet.write(row, idx, str(attr_value))
             row += 1
 
