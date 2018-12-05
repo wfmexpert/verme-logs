@@ -1,7 +1,7 @@
 from .models import ExportTemplate
 
 
-def get_report_by_code(code=None):
+def get_report_by_code(code=None, queryset=None):
     """
     Возвращает сформированный отчет по его коду
     """
@@ -12,4 +12,4 @@ def get_report_by_code(code=None):
     if not template:
         return None
 
-    return template.to_export()
+    return template.to_export(queryset)
