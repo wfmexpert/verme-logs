@@ -33,7 +33,7 @@ class ExportTemplate(models.Model):
         if self.format == 'xlsx':
             return self.to_xlsx(queryset)
         elif self.format == 'xls':
-            return self.to_xlsx(queryset)
+            return self.to_xls(queryset)
         elif self.format == 'csv':
             return self.to_xlsx(queryset)
         return None
