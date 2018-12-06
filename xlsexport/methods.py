@@ -50,6 +50,6 @@ def get_report_by_model(model=None, queryset=None):
                          "default": True}
 
         # Создаем шаблон отчета
-        template = ExportTemplate.objects.create(template_dict)
+        template = ExportTemplate.objects.create(**template_dict)
     return template.to_export(queryset)
 
