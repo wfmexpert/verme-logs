@@ -11,5 +11,5 @@ def get_report_by_code(code=None, queryset=None):
 
     template = ExportTemplate.objects.filter(code=code).first()
     if not template:
-        return JsonResponse({"non_field_errors": "Не найден отчет с указанным кодом"}, status=400)
+        return JsonResponse({"non_field_errors": f"Отчет с кодом '{code}' не найден. Для экспорта в Excel необходимо создать шаблон отчета."}, status=400)
     return template.to_export(queryset)
