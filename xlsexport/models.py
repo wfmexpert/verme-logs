@@ -81,9 +81,9 @@ class ExportTemplate(models.Model):
 
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(fields):
-            if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
-                continue
             if not param_fields:
+                if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                    continue
                 worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
                 worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
             else:
@@ -96,10 +96,10 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
-                if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
-                    continue
                 cell_format = None
                 if not param_fields:
+                    if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                        continue
                     attr_value = getattr(item, field.name)
                 else:
                     try:
@@ -152,9 +152,9 @@ class ExportTemplate(models.Model):
 
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(fields):
-            if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
-                continue
             if not param_fields:
+                if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                    continue
                 worksheet.write(0, idx, field.verbose_name, bold)
             else:
                 worksheet.write(0, idx, field.get("name"), bold)
@@ -165,10 +165,10 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
-                if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
-                    continue
                 cell_format = None
                 if not param_fields:
+                    if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                        continue
                     attr_value = getattr(item, field.name)
                 else:
                     try:
