@@ -28,7 +28,7 @@ def get_report_by_model(model=None, queryset=None):
     if not template:
         # Получаем поля модели
         model_obj = apps.get_model(*(model.split('.', 1)))
-        fields = model_obj.get_model()._meta.get_fields()
+        fields = model_obj._meta.get_fields()
         filename = model.split('.')[1]
         params = {"fields": [],
                   "filename": filename}
