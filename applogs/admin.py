@@ -16,6 +16,7 @@ from .forms import ServerRecordForm
 from .models import ClientRecord, ServerRecord
 from .utils import XLSWriterUtil
 from xlsexport.methods import get_report_by_code
+from xlsexport.mixins import AdminExportMixin
 
 @staff_member_required
 def delete_all_client_records_view(request):
@@ -72,11 +73,11 @@ class ServerRecordXLS(XLSWriterUtil):
 
 
 @admin.register(ServerRecord)
-class ServerRecordAdmin(admin.ModelAdmin):
+class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     list_display = ('created_at', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
     list_filter = ('source', 'method', 'level', 'headquater')
     search_fields = ('message', 'tags')
-    actions = ('make_report',)
+    #actions = ('make_report',)
     form = ServerRecordForm
 
     def html_message(self, obj):
