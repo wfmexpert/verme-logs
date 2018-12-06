@@ -24,6 +24,7 @@ class ExportTemplate(models.Model):
     model = models.CharField(verbose_name='модель', max_length=64, blank=True, null=True)
     queryset = JSONField(verbose_name='queryset', default=None, null=True, blank=True)
     params = JSONField(verbose_name='параметры', default=None, null=True, blank=True)
+    default = models.BooleanField(verbose_name='по умолчанию', default=False)
 
     class Meta:
         verbose_name = 'Шаблон отчета'
@@ -92,8 +93,6 @@ class ExportTemplate(models.Model):
                 cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
-                    if isinstance(field, models.ForeignKey):
-                        attr_value = getattr(attr_value, 'code')
                 else:
                     field_name = field.get('field').split('.')
                     attr_value = getattr(item, field_name[0])
@@ -154,8 +153,6 @@ class ExportTemplate(models.Model):
                 cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
-                    if isinstance(field, models.ForeignKey):
-                        attr_value = getattr(attr_value, 'code')
                 else:
                     field_name = field.get('field').split('.')
                     attr_value = getattr(item, field_name[0])
