@@ -1,5 +1,5 @@
 from django.contrib.postgres.fields import JSONField
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest
 from django.contrib import messages
 from django.utils.safestring import mark_safe
 
@@ -105,7 +105,7 @@ class ExportTemplate(models.Model):
                             attr_value = getattr(attr_value, field_name[x])
                     except AttributeError:
                         msg = f"Поле {field.get('field')} отсутствует в объекте"
-                        return JsonResponse({"non_field_errors": msg})
+                        return HttpResponse(msg)
 
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
@@ -170,7 +170,7 @@ class ExportTemplate(models.Model):
                             attr_value = getattr(attr_value, field_name[x])
                     except AttributeError:
                         msg = f"Поле {field.get('field')} отсутствует в объекте"
-                        return JsonResponse({"non_field_errors": msg})
+                        return HttpResponse(msg)
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):

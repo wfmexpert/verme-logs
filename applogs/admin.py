@@ -77,22 +77,11 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     list_display = ('created_at', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
     list_filter = ('source', 'method', 'level', 'headquater')
     search_fields = ('message', 'tags')
-    #actions = ('make_report',)
     form = ServerRecordForm
 
     def html_message(self, obj):
         return format_html('<pre>{}</pre>', obj.message[:200])
     html_message.short_description = 'Описание'
-
-    def make_report(self, request, queryset):
-        return get_report_by_code('serverrecord', queryset)
-        #content = ServerRecordXLS(queryset[:65000]).generate_as_buffer()
-        #response = StreamingHttpResponse(content, content_type='application/vnd.ms-excel')
-        #today = make_naive(timezone.now()).strftime('%Y%m%d.%H%M%S')
-        #filename = 'serverrecord.%s.xls' % today
-        #response["Content-Disposition"] = f"attachment; filename*=UTF-8''{urlquote(filename)}"
-        #return response
-    make_report.short_description = 'Выгрузить в Excel'
 
     def duration_rounded(self, obj):
         return round(obj.duration, 3)
