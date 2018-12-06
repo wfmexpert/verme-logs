@@ -24,3 +24,8 @@ class ExportTemplateAdmin(admin.ModelAdmin):
     list_filter = ('format',)
     search_fields = ('name', 'code')
     form = ExportTemplateForm
+    actions = ('run_export', )
+
+    def run_export(self, request, queryset):
+        return queryset[:1].to_export()
+    run_export.short_description = 'Запустить экспорт в Excel'
