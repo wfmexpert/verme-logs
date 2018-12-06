@@ -1,4 +1,8 @@
 from django.contrib.postgres.fields import JSONField
+from django.http import JsonResponse
+from django.contrib import messages
+from django.utils.safestring import mark_safe
+
 from django.db import models
 from django.apps import apps
 from django.http import HttpResponse
@@ -77,6 +81,8 @@ class ExportTemplate(models.Model):
 
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(fields):
+            if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                continue
             if not param_fields:
                 worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
                 worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
@@ -90,14 +96,21 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
+                if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                    continue
                 cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
                 else:
-                    field_name = field.get('field').split('.')
-                    attr_value = getattr(item, field_name[0])
-                    for x in range(1, len(field_name)):
-                        attr_value = getattr(attr_value, field_name[x])
+                    try:
+                        field_name = field.get('field').split('.')
+                        attr_value = getattr(item, field_name[0])
+                        for x in range(1, len(field_name)):
+                            attr_value = getattr(attr_value, field_name[x])
+                    except AttributeError:
+                        msg = f"Поле {field.get('field')} отсутствует в объекте"
+                        return JsonResponse({"non_field_errors": msg})
+
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):
@@ -139,6 +152,8 @@ class ExportTemplate(models.Model):
 
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(fields):
+            if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                continue
             if not param_fields:
                 worksheet.write(0, idx, field.verbose_name, bold)
             else:
@@ -150,14 +165,20 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
+                if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                    continue
                 cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
                 else:
-                    field_name = field.get('field').split('.')
-                    attr_value = getattr(item, field_name[0])
-                    for x in range(1, len(field_name)):
-                        attr_value = getattr(attr_value, field_name[x])
+                    try:
+                        field_name = field.get('field').split('.')
+                        attr_value = getattr(item, field_name[0])
+                        for x in range(1, len(field_name)):
+                            attr_value = getattr(attr_value, field_name[x])
+                    except AttributeError:
+                        msg = f"Поле {field.get('field')} отсутствует в объекте"
+                        return JsonResponse({"non_field_errors": msg})
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):
