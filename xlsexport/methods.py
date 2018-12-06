@@ -34,6 +34,8 @@ def get_report_by_model(model=None, queryset=None):
                   "filename": filename}
 
         for field in fields:
+            if field.is_relation or field.one_to_one or (field.many_to_one and field.related_model):
+                continue
             field_dict = {"name": field.verbose_name, "field": field.name, "width": 15}
             if field.get_internal_type() == 'DateTimeField':
                 field_dict.update({"format": "%d.%m.%y %H:%M:%S"})
