@@ -11,7 +11,7 @@ from django.urls import reverse
 @staff_member_required
 def xls_export_view(request):
     if request.method == 'POST':
-        export_template = ExportTemplate.objects.filter(id=request.POST['export_template_id'])
+        export_template = ExportTemplate.objects.filter(id=request.POST['export_template_id']).first()
         if not export_template:
             messages.error(request, "Шаблон отчета не найден.")
         export_template.to_export()
@@ -27,5 +27,5 @@ class ExportTemplateAdmin(admin.ModelAdmin):
     actions = ('run_export', )
 
     def run_export(self, request, queryset):
-        return queryset[:1].to_export()
+        return queryset.first().to_export()
     run_export.short_description = 'Запустить экспорт в Excel'
