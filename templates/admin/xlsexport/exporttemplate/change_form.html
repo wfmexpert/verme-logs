@@ -1,0 +1,12 @@
+{% extends "admin/change_form.html" %}
+
+{% block object-tools-items %}
+{{ block.super }}
+	<li>
+		<form method="POST" action="{% url 'xlsexport:xls_export_view' %}">
+			{% csrf_token %}
+			<input type="hidden" name="export_template_id" value="{{original.pk}}">
+			<input type="submit" value="Запустить экспорт в Excel">
+		</form>
+	</li>
+{% endblock %}
