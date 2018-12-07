@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ExportTemplate
+from .models import ExportTemplate, ImportTemplate
 from .forms import ExportTemplateForm, ImportTemplateForm
 
 from django.contrib import messages
@@ -30,7 +30,7 @@ class ExportTemplateAdmin(admin.ModelAdmin):
         return queryset.first().to_export()
     run_export.short_description = 'Запустить экспорт в Excel'
 
-@admin.register()
+@admin.register(ImportTemplate)
 class ImportTemplateAdmin(admin.ModelAdmin):
     change_list_template = 'admin/importtemplate/change_list.html'
 
