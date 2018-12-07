@@ -33,7 +33,11 @@ class ExportTemplateForm(forms.ModelForm):
 
 class ImportTemplateForm(forms.Form):
 
-    template = forms.ModelChoiceField(queryset=ExportTemplate.objects.all(), widget=forms.Select, required=True)
+    class CustomModelChoiceField(forms.ModelChoiceField):
+        def label_from_instance(self, obj):
+            return f'{obj.name}'
+
+    template = CustomModelChoiceField(queryset=ExportTemplate.objects.all(), widget=forms.Select, required=True)
     file = forms.FileField(required=True)
 
     def clean_template(self):
