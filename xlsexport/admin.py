@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 
 
 @staff_member_required
@@ -32,12 +33,6 @@ class ExportTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(ImportTemplate)
 class ImportTemplateAdmin(admin.ModelAdmin):
-    change_list_template = 'admin/importtemplate/change_list.html'
-
-    def _save_file(self, file, path):
-        with open(path, 'wb+') as fixture:
-            for chunk in file.chunks():
-                fixture.write(chunk)
 
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context)
@@ -47,15 +42,12 @@ class ImportTemplateAdmin(admin.ModelAdmin):
             if form.is_valid():
                 template = form.cleaned_data.get('template')
                 file = form.cleaned_data.get('file')
-                print ("TEMPALTE", template)
-                #filename = '{0}.json'.format(uuid.uuid4())
-                #temp_dir = '/tmp'
-                #new_file_path = os.path.join(temp_dir, filename)
-                #self._save_file(file, new_file_path)
-                #call_command('loaddata', new_file_path)
-                #os.remove(new_file_path)
-
-                response.context_data['success_message'] = """Данные из файла загружены в базу"""
+                errors = template.to_import(file)
+                if errors:
+                    msg = ''.join(['Строка: {} ошибка:{}<br/>'.format(error['rownum'], error['exc'])
+                                   for error in errors])
+                    msg = mark_safe(msg)
+                    messages.add_message(request, messages.ERROR, msg)
                 form = ImportTemplateForm()
         else:
             form = ImportTemplateForm()

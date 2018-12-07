@@ -3,6 +3,19 @@ from django.http import JsonResponse
 from .models import ExportTemplate
 
 
+def get_template_by_code(code=None):
+    """
+    Возвращает шаблон отчета по его коду
+    """
+    if not code:
+        return None
+
+    template = ExportTemplate.objects.filter(code=code).first()
+    if not template:
+        return JsonResponse({"non_field_errors": f"Отчет с кодом '{code}' не найден. Для экспорта в Excel необходимо создать шаблон отчета."}, status=400)
+    return template
+
+
 def get_report_by_code(code=None, queryset=None):
     """
     Возвращает сформированный отчет по его коду
@@ -34,7 +47,7 @@ def get_report_by_model(model=None, queryset=None):
                   "filename": filename}
 
         for field in fields:
-            field_dict = {"name": field.verbose_name, "field": field.name, "width": 15}
+            field_dict = {"name": field.verbose_name, "field": field.name, "width": 15, "key_field": False, "import_ignore": True, "export_ignore": False}
             if field.get_internal_type() == 'DateTimeField':
                 field_dict.update({"format": "%d.%m.%y %H:%M:%S"})
             if field.get_internal_type() == 'FloatField':

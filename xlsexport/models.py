@@ -12,6 +12,8 @@ import xlsxwriter, xlwt
 import io
 import string
 
+from .parsers import XLSParser
+
 # Форматы экспорта
 EXPORT_FORMAT_CHOICES = (
     ("xlsx", "XLSX"),
@@ -56,12 +58,30 @@ class ExportTemplate(models.Model):
         fields = param_fields or self.get_model_fields()
         return param_fields, fields
 
+    def get_key_fields(self):
+        param_fields, fields = self.get_param_fields()
+        if not param_fields:
+            return None
+        key_fields = list()
+        for field in param_fields:
+            if field.get('key_field'):
+                key_fields.append(field)
+        return key_fields
+
     def get_queryset(self, queryset=None):
         if not queryset:
             queryset = self.get_model().objects.all()
         if self.queryset:
             queryset = queryset.filter(**self.queryset)
         return queryset
+
+    def check_fields(self):
+        # TODO
+        pass
+
+    def get_export_fields(self):
+        # TODO
+        pass
 
     def to_xlsx(self, queryset=None):
         param_fields, fields = self.get_param_fields()
@@ -85,6 +105,9 @@ class ExportTemplate(models.Model):
                 worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
                 worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
             else:
+                export_ignore_field = field.get("export_ignore", False)
+                if export_ignore_field:
+                    continue
                 worksheet.set_column(f'{letters[idx]}:{letters[idx]}', field.get("width", 15))
                 worksheet.write(f'{letters[idx]}1', f'{field.get("name")}', bold)
 
@@ -94,6 +117,9 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
+                export_ignore_field = field.get("export_ignore", False)
+                if export_ignore_field:
+                    continue
                 cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
@@ -151,6 +177,9 @@ class ExportTemplate(models.Model):
             if not param_fields:
                 worksheet.write(0, idx, field.verbose_name, bold)
             else:
+                export_ignore_field = field.get("export_ignore", False)
+                if export_ignore_field:
+                    continue
                 worksheet.write(0, idx, field.get("name"), bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
@@ -159,6 +188,9 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         for item in queryset:
             for idx, field in enumerate(fields):
+                export_ignore_field = field.get("export_ignore", False)
+                if export_ignore_field:
+                    continue
                 cell_format = None
                 if not param_fields:
                     attr_value = getattr(item, field.name)
@@ -196,6 +228,18 @@ class ExportTemplate(models.Model):
         filename = self.params.get('filename', self.code)
         response['Content-Disposition'] = f'attachment; filename="{filename}.xls"'
         return response
+
+
+    def from_xlsx(self, response=None, file=None):
+        errors = XLSParser.parse(file)
+        return errors
+
+    def to_import(self, file=None):
+        if self.format == 'xlsx' or self.format == 'xls':
+            return self.from_xlsx(file)
+        elif self.format == 'csv':
+            return None
+        return None
 
 
 class ImportTemplate(ExportTemplate):
