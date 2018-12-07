@@ -39,62 +39,26 @@ class ImportTemplateAdmin(admin.ModelAdmin):
             for chunk in file.chunks():
                 fixture.write(chunk)
 
-    def _build_output_file_path(self, filename, num, output_path):
-        names = filename.split('.')
-        names[0] += str(num)
-        temp_filename = '.'.join(names)
-        return os.path.join(output_path, temp_filename)
-
-    def _build_output_path(self, filename, temp_dir):
-        names = filename.split('.')
-        output_folder = '.'.join(names[:-1])
-        output_path = os.path.join(temp_dir, output_folder)
-        os.makedirs(output_path, exist_ok=True)
-        return output_path
-
-    def _make_http_response(self, path):
-        with open(path, 'rb') as file:
-            response = HttpResponse(
-                file.read(),
-                content_type="application/json"
-            )
-        subprocess.Popen("rm {0}".format(path), shell=True)
-        response['Content-Disposition'] = "attachment; filename=fixtures.json"
-        return response
-
     def changelist_view(self, request, extra_context=None):
         response = super().changelist_view(request, extra_context)
 
         if request.POST:
-            form = CopySettingsForm(request.POST, request.FILES)
+            form = ImportTemplateForm(request.POST, request.FILES)
             if form.is_valid():
-                packages = form.cleaned_data.get('packages')
+                template = form.cleaned_data.get('template')
                 file = form.cleaned_data.get('file')
-                filename = '{0}.json'.format(uuid.uuid4())
-                temp_dir = '/tmp'
-                new_file_path = os.path.join(temp_dir, filename)
-                if request.POST.get('load'):
-                    self._save_file(file, new_file_path)
-                    call_command('loaddata', new_file_path)
-                    os.remove(new_file_path)
+                print ("TEMPALTE", template)
+                #filename = '{0}.json'.format(uuid.uuid4())
+                #temp_dir = '/tmp'
+                #new_file_path = os.path.join(temp_dir, filename)
+                #self._save_file(file, new_file_path)
+                #call_command('loaddata', new_file_path)
+                #os.remove(new_file_path)
 
-                    response.context_data['success_message'] = """
-                        Данные из фикстур загружены в базу"""
-                else:
-                    output_path = self._build_output_path(filename, temp_dir)
-                    for num, package in enumerate(packages):
-                        output_file_path = self._build_output_file_path(
-                            filename, num, output_path)
-                        call_command(
-                            'dumpdata', package, indent=2,
-                            output=output_file_path, natural_foreign=True
-                        )
-                    merge_json_files(output_path, new_file_path)
-                    return self._make_http_response(new_file_path)
-
-                form = CopySettingsForm()
+                response.context_data['success_message'] = """Данные из файла загружены в базу"""
+                form = ImportTemplateForm()
         else:
-            form = CopySettingsForm()
+            form = ImportTemplateForm()
 
         response.context_data['form'] = form
 
