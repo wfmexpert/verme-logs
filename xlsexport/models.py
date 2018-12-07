@@ -196,3 +196,11 @@ class ExportTemplate(models.Model):
         filename = self.params.get('filename', self.code)
         response['Content-Disposition'] = f'attachment; filename="{filename}.xls"'
         return response
+
+
+class ImportTemplate(ExportTemplate):
+
+    class Meta:
+        proxy = True
+        verbose_name = 'Импорт из XLSX/XLS'
+        verbose_name_plural = 'Импорт из XLSX/XLS'
