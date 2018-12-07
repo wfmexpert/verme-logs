@@ -230,8 +230,8 @@ class ExportTemplate(models.Model):
         return response
 
 
-    def from_xlsx(self, response=None, file=None):
-        errors = XLSParser.parse(file)
+    def from_xlsx(self, file=None):
+        errors = XLSParser.parse(self, file)
         return errors
 
     def to_import(self, file=None):
