@@ -6,8 +6,6 @@ from django.db.models import Q
 
 from collections import defaultdict
 
-from .methods import *
-
 
 class XLSParser:
     """
