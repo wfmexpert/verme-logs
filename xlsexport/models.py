@@ -231,7 +231,8 @@ class ExportTemplate(models.Model):
 
 
     def from_xlsx(self, file=None):
-        errors = XLSParser.parse(self, file)
+        parser = XLSParser
+        errors = parser.parse(self, file)
         return errors
 
     def to_import(self, file=None):
