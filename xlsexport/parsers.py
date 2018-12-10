@@ -141,7 +141,10 @@ class XLSParser:
                 return get_cell_date(value)
 
         def get_cell_date(cell):
-            return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
+            try:
+                return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
+            except TypeError:
+                return cell
 
         def get_number(value):
             try:
@@ -172,5 +175,5 @@ class XLSParser:
                 attr_value = get_formatted_field(clean_value(row[idx]))
             else:
                 attr_value = get_int_as_string(clean_value(row[idx]))
-            result.update({param_fields[idx]: attr_value})
+            result.update({param_fields[idx]['field']: attr_value})
         return result
