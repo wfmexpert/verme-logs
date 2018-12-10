@@ -24,7 +24,7 @@ class XLSParser:
         for rownum in range(1, sheet.nrows):
             row = sheet.row_values(rownum)
             try:
-                self.item_date = self.get_struct_from_row(row, rb, template)
+                self.item_data = self.get_struct_from_row(row, rb, template)
                 self.process_item_data(template)
             except Exception as exc:
                 errors.append({'rownum': rownum, 'exc': exc})
