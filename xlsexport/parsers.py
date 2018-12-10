@@ -7,12 +7,17 @@ from django.db.models import Q
 from collections import defaultdict
 
 
+class CustomException(Exception):
+    pass
+
+
 class XLSParser:
     """
     Парсер xls-файлов
     """
 
     def __init__(self):
+        self.cache_dict = dict()
         self.item_data = {}
         self.processed_items = set()
         self.created_items = defaultdict(list)
@@ -30,12 +35,28 @@ class XLSParser:
                 errors.append({'rownum': rownum, 'exc': exc})
         return errors
 
+    def get_attr_value(self, model, row_data, splitted_fields):
+        # Определяем тип поля
+        field = model._meta.get_field(splitted_fields[0])
+        # Если поле - связь к другой модели
+        if field.is_relation and field.related_model:
+            # Обновляем модель
+            model = field.related_model
+            # Формируем массив для поиска объекта модели
+            attr_query_dict = {splitted_fields[1]: self.item_data[row_data]}
+        else:
+            # Формируем массив для поиска объекта модели
+            attr_query_dict = {splitted_fields[0]: self.item_data[row_data]}
+        attr_value = model.objects.filter(**attr_query_dict).first()
+        return attr_value
+
     def process_item_data(self, template):
         model = template.get_model()
         param_fields, fields = template.get_param_fields()
         key_fields = template.get_key_fields()
+
         if not param_fields or not key_fields:
-            return None
+            raise CustomException(f"Не указаны поля или ключевые поля в шаблоне")
 
         print('KEY FIELDS', key_fields)
         # Список ключевых полей
@@ -54,68 +75,59 @@ class XLSParser:
 
         query = dict()
         defaults = dict()
+        cache_set = list()
 
         for row_data in self.item_data:
             if row_data in ignore_fields_list:
                 continue
+            # Если поле ключевое, то используем его для поиска QS
             if row_data in key_fields_list:
-                # Если есть указания ключевых полей через точку, то они должны быть преобразованы
-                # в __ для формирования queryset
-                # query.update({row_data.replace('.', '__'): self.item_data[row_data]})
-                # Если поля не ключевые, то нужно сначала найти объекты
+                # Делим поле по разделителю
                 splitted_fields = row_data.split('.')
-                # organization.code
-                if len(splitted_fields) > 1:
-                    # Определяем тип поля
-                    field = model._meta.get_field(splitted_fields[0])
-                    # Если поле - связь к другой модели
-                    if field.is_relation and field.related_model:
-                        # Обновляем модель
-                        model = field.related_model
-                        # Формируем массив для поиска объекта модели
-                        attr_query_dict = {splitted_fields[1]: self.item_data[row_data]}
-                        attr_value = model.objects.filter(**attr_query_dict).first()
-                    else:
-                        # Формируем массив для поиска объекта модели
-                        attr_query_dict = {splitted_fields[0]: self.item_data[row_data]}
-                        attr_value = model.objects.filter(**attr_query_dict).first()
+                if len(splitted_fields) == 2:
+                    attr_value = self.get_attr_value(model, row_data, splitted_fields)
                     query.update({splitted_fields[0]: attr_value})
+                    cache_set.append(self.item_data[row_data])
                 else:
                     query.update({row_data: self.item_data[row_data]})
             else:
                 # Если поля не ключевые, то нужно сначала найти объекты
                 splitted_fields = row_data.split('.')
-                if len(splitted_fields) > 1:
-                    # Определяем тип поля
-                    field = model._meta.get_field(splitted_fields[0])
-                    # Если поле - связь к другой модели
-                    if field.is_relation and field.related_model:
-                        # Обновляем модель
-                        model = field.related_model
-                        # Формируем массив для поиска объекта модели
-                        attr_query_dict = {splitted_fields[1]: self.item_data[row_data]}
-                        attr_value = model.objects.filter(**attr_query_dict).first()
-                    else:
-                        # Формируем массив для поиска объекта модели
-                        attr_query_dict = {splitted_fields[0]: self.item_data[row_data]}
-                        attr_value = model.objects.filter(**attr_query_dict).first()
+                if len(splitted_fields) == 2:
+                    attr_value = self.get_attr_value(model, row_data, splitted_fields)
                     defaults.update({splitted_fields[0]: attr_value})
                 else:
                     defaults.update({row_data: self.item_data[row_data]})
 
-        result_query.update(query)
-        if defaults:
-            result_query.update(defaults=defaults)
-        print ("RESULT_QUERY", result_query)
+        target_object = None
+        if cache_set:
+            cache_tuple = tuple(i for i in cache_set)
+            print("CT", cache_tuple)
+            if cache_tuple in self.cache_dict:
+                target_object = self.cache_dict.get(cache_tuple)
+                print ('IN CACHE', target_object)
+            else:
+                target_object = model.objects.filter(**query).first()
+                self.cache_dict.update({cache_tuple: target_object})
+                print('NOT IN CACHE', target_object)
+
+        if not defaults:
+            raise CustomException(f"Не указаны значения для обновления")
 
         with transaction.atomic():
             try:
-                model_obj, created = model.objects.update_or_create(result_query)
-                if created:
-                    self.created_items[model_obj] = self.item_data
+                if target_object:
+                    for key, value in defaults.items():
+                        setattr(target_object, key, value)
+                    target_object.save()
+                else:
+                    result_query.update(query)
+                    result_query.update(defaults)
+                    target_object = model.objects.create(**result_query)
+                    self.created_items[target_object] = self.item_data
             except Exception:
                 raise
-        self.processed_items.add(model_obj)
+        self.processed_items.add(target_object)
 
     @staticmethod
     def get_struct_from_row(row, rb, template):
