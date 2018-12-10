@@ -43,6 +43,12 @@ class XLSParser:
         for key_field in key_fields:
             key_fields_list.add(key_field['field'])
 
+        # Список игнорируемых полей
+        ignore_fields_list = set()
+        for param_field in param_fields:
+            if param_field.get('import_ignore', True):
+                ignore_fields_list.add(param_field['field'])
+
         # Для update_or_create
         result_query = dict()
 
@@ -50,12 +56,38 @@ class XLSParser:
         defaults = dict()
 
         for row_data in self.item_data:
-            if param_fields[row_data].get('import_ignore', True):
+            if row_data in ignore_fields_list:
                 continue
             if row_data in key_fields_list:
                 # Если есть указания ключевых полей через точку, то они должны быть преобразованы
                 # в __ для формирования queryset
-                query.update({row_data.replace('.', '__'): self.item_data[row_data]})
+                # query.update({row_data.replace('.', '__'): self.item_data[row_data]})
+                # Если поля не ключевые, то нужно сначала найти объекты
+                splitted_fields = row_data.split('.')
+                # organization.code
+                if len(splitted_fields) > 1:
+                    # Определяем тип поля
+                    field = model.get_field(splitted_fields[0])
+                    curr_idx = 1
+                    while True:
+                        if curr_idx > len(splitted_fields):
+                            break
+                        # Если поле - связь к другой модели
+                        if field.is_relation and field.related_model:
+                            # Обновляем модель
+                            model = field.related_model
+                            # Обновляем поле
+                            field = model.get_field(splitted_fields[curr_idx])
+                        else:
+                            # Формируем массив для поиска объекта модели
+                            attr_query_dict = {splitted_fields[curr_idx]: self.item_data[row_data]}
+                            attr_value = model.objects.filter(**attr_query_dict).first()
+                            # Убираем последнее поле, т.к. оно для поиска объекта модели
+                            # и устанавливаем объект модели
+                            splitted_fields.pop()
+                            query.update({splitted_fields[0]: attr_value})
+                else:
+                    query.update({row_data: self.item_data[row_data]})
             else:
                 # Если поля не ключевые, то нужно сначала найти объекты
                 splitted_fields = row_data.split('.')
@@ -79,15 +111,7 @@ class XLSParser:
                             # Убираем последнее поле, т.к. оно для поиска объекта модели
                             # и устанавливаем объект модели
                             splitted_fields.pop()
-                            # TODO пока только 1 уровень, например organization.code
-                            # TODO organization.headquater.code не сработает
-                            #model_curr_idx = 1
-                            #while True:
-                            #    if model_curr_idx > len(splitted_fields):
-                            #        break
-
-                            # organization.headquater
-                            defaults.update({'__'.join(splitted_fields): attr_value})
+                            defaults.update({splitted_fields[0]: attr_value})
 
                         # Обновляем индекс
                         curr_idx += 1
@@ -99,7 +123,7 @@ class XLSParser:
 
         with transaction.atomic():
             try:
-                model_obj, created = model.update_or_create(result_query)
+                model_obj, created = model.objects.update_or_create(result_query)
                 if created:
                     self.created_items[model_obj] = self.item_data
             except Exception:
