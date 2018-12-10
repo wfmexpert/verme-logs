@@ -142,7 +142,7 @@ class XLSParser:
             return value
 
         result = dict()
-        param_fields, fields = template.get_param_fields
+        param_fields, fields = template.get_param_fields()
         for idx, item in enumerate(row):
             if 'format' in param_fields[idx]:
                 attr_value = get_formatted_field(clean_value(row[idx]))
