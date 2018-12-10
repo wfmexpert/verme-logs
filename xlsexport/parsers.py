@@ -67,24 +67,26 @@ class XLSParser:
                 # organization.code
                 if len(splitted_fields) > 1:
                     # Определяем тип поля
-                    field = model._meta.get_field(splitted_fields[0])
-                    curr_idx = 1
+                    #field = model._meta.get_field(splitted_fields[0])
+                    curr_idx = 0
                     while True:
-                        if curr_idx > len(splitted_fields):
+                        if curr_idx - 1 > len(splitted_fields):
                             break
+                        # Определяем тип поля
+                        field = model._meta.get_field(splitted_fields[curr_idx])
                         # Если поле - связь к другой модели
                         if field.is_relation and field.related_model:
                             # Обновляем модель
                             model = field.related_model
                             # Обновляем поле
-                            field = model._meta.get_field(splitted_fields[curr_idx])
+                            #field = model._meta.get_field(splitted_fields[curr_idx])
                         else:
                             # Формируем массив для поиска объекта модели
                             attr_query_dict = {splitted_fields[curr_idx]: self.item_data[row_data]}
                             attr_value = model.objects.filter(**attr_query_dict).first()
                             # Убираем последнее поле, т.к. оно для поиска объекта модели
                             # и устанавливаем объект модели
-                            splitted_fields.pop()
+                            #splitted_fields.pop()
                             query.update({splitted_fields[0]: attr_value})
                         # Обновляем индекс
                         curr_idx += 1
@@ -95,24 +97,26 @@ class XLSParser:
                 splitted_fields = row_data.split('.')
                 if len(splitted_fields) > 1:
                     # Определяем тип поля
-                    field = model._meta.get_field(splitted_fields[0])
-                    curr_idx = 1
+                    #field = model._meta.get_field(splitted_fields[0])
+                    curr_idx = 0
                     while True:
-                        if curr_idx > len(splitted_fields):
+                        if curr_idx - 1 > len(splitted_fields):
                             break
+                        # Определяем тип поля
+                        field = model._meta.get_field(splitted_fields[curr_idx])
                         # Если поле - связь к другой модели
                         if field.is_relation and field.related_model:
                             # Обновляем модель
                             model = field.related_model
                             # Обновляем поле
-                            field = model._meta.get_field(splitted_fields[curr_idx])
+                            #field = model._meta.get_field(splitted_fields[curr_idx])
                         else:
                             # Формируем массив для поиска объекта модели
                             attr_query_dict = {splitted_fields[curr_idx]: self.item_data[row_data]}
                             attr_value = model.objects.filter(**attr_query_dict).first()
                             # Убираем последнее поле, т.к. оно для поиска объекта модели
                             # и устанавливаем объект модели
-                            splitted_fields.pop()
+                            #splitted_fields.pop()
                             defaults.update({splitted_fields[0]: attr_value})
 
                         # Обновляем индекс
