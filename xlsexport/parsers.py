@@ -67,7 +67,7 @@ class XLSParser:
                 # organization.code
                 if len(splitted_fields) > 1:
                     # Определяем тип поля
-                    field = model.get_field(splitted_fields[0])
+                    field = model._meta.get_field(splitted_fields[0])
                     curr_idx = 1
                     while True:
                         if curr_idx > len(splitted_fields):
@@ -77,7 +77,7 @@ class XLSParser:
                             # Обновляем модель
                             model = field.related_model
                             # Обновляем поле
-                            field = model.get_field(splitted_fields[curr_idx])
+                            field = model._meta.get_field(splitted_fields[curr_idx])
                         else:
                             # Формируем массив для поиска объекта модели
                             attr_query_dict = {splitted_fields[curr_idx]: self.item_data[row_data]}
@@ -86,6 +86,8 @@ class XLSParser:
                             # и устанавливаем объект модели
                             splitted_fields.pop()
                             query.update({splitted_fields[0]: attr_value})
+                        # Обновляем индекс
+                        curr_idx += 1
                 else:
                     query.update({row_data: self.item_data[row_data]})
             else:
@@ -93,7 +95,7 @@ class XLSParser:
                 splitted_fields = row_data.split('.')
                 if len(splitted_fields) > 1:
                     # Определяем тип поля
-                    field = model.get_field(splitted_fields[0])
+                    field = model._meta.get_field(splitted_fields[0])
                     curr_idx = 1
                     while True:
                         if curr_idx > len(splitted_fields):
@@ -103,7 +105,7 @@ class XLSParser:
                             # Обновляем модель
                             model = field.related_model
                             # Обновляем поле
-                            field = model.get_field(splitted_fields[curr_idx])
+                            field = model._meta.get_field(splitted_fields[curr_idx])
                         else:
                             # Формируем массив для поиска объекта модели
                             attr_query_dict = {splitted_fields[curr_idx]: self.item_data[row_data]}
@@ -118,7 +120,9 @@ class XLSParser:
                 else:
                     defaults.update({row_data: self.item_data[row_data]})
 
-        result_query.update(query, defaults=defaults)
+        result_query.update(query)
+        if defaults:
+            result_query.update(defaults=defaults)
         print ("RESULT_QUERY", result_query)
 
         with transaction.atomic():
