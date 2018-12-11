@@ -71,10 +71,13 @@ class XLSParser:
                 model = field.related_model
                 processed_model_list.append(model)
             else:
-                # Формируем массив для поиска объекта модели
-                attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
-                # Получили объект модели по значению поля
-                attr_value = model.objects.filter(**attr_query_dict).first()
+                if current_idx > 0:
+                    # Формируем массив для поиска объекта модели
+                    attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
+                    # Получили объект модели по значению поля
+                    attr_value = model.objects.filter(**attr_query_dict).first()
+                else:
+                    attr_value = self.item_data[row_data]
             current_idx += 1
 
         current_idx2 = splitted_length - 2
@@ -106,7 +109,6 @@ class XLSParser:
         if not param_fields or not key_fields:
             raise CustomException(f"Не указаны поля или ключевые поля в шаблоне")
 
-        print('KEY FIELDS', key_fields)
         # Список ключевых полей
         key_fields_list = set()
         for key_field in key_fields:
@@ -140,14 +142,11 @@ class XLSParser:
         target_object = None
         if cache_set:
             cache_tuple = tuple(i for i in cache_set)
-            print("CT", cache_tuple)
             if cache_tuple in self.cache_dict:
                 target_object = self.cache_dict.get(cache_tuple)
-                print ('IN CACHE', target_object)
             else:
                 target_object = model.objects.filter(**query).first()
                 self.cache_dict.update({cache_tuple: target_object})
-                print('NOT IN CACHE', target_object)
 
         if not defaults:
             raise CustomException(f"Не указаны значения для обновления")
