@@ -50,6 +50,54 @@ class XLSParser:
         attr_value = model.objects.filter(**attr_query_dict).first()
         return attr_value
 
+    def get_attr_value_ext(self, model, row_data):
+        # Делим поле по разделителю
+        splitted_fields = row_data.split('.')
+        splitted_length = len(splitted_fields)
+
+        current_idx = 0
+        processed_model_list = list()
+        processed_model_list.append(model)
+        attr_value = None
+        while True:
+            if not current_idx < splitted_length:
+                break
+            # Выбираем поле и модель
+            current_field = splitted_fields[current_idx]
+            field = model._meta.get_field(current_field)
+            # Если поле - связь к другой модели
+            if field.is_relation and field.related_model:
+                # Обновляем модель
+                model = field.related_model
+                processed_model_list.append(model)
+            else:
+                # Формируем массив для поиска объекта модели
+                attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
+                # Получили объект модели по значению поля
+                attr_value = model.objects.filter(**attr_query_dict).first()
+            current_idx += 1
+
+        current_idx2 = splitted_length - 2
+        # Убираем последнюю модель из списка обработанных
+        # т.к. по ней уже имеем объект
+        processed_model_list.pop()
+        current_value = attr_value
+        while True:
+            if current_idx2 < 1:
+                break
+            current_object_attr_query = {splitted_fields[current_idx2]: current_value}
+            current_model = processed_model_list.pop()
+            if processed_model_list:
+                current_value = current_model.objects.filter(**current_object_attr_query).first()
+            else:
+                current_value = current_object_attr_query
+            current_idx2 -= 1
+        if splitted_length > 1:
+            result_dict = {splitted_fields[0]: current_value}
+        else:
+            result_dict = {splitted_fields[0]: attr_value}
+        return result_dict
+
     def process_item_data(self, template):
         model = template.get_model()
         param_fields, fields = template.get_param_fields()
@@ -80,24 +128,14 @@ class XLSParser:
         for row_data in self.item_data:
             if row_data in ignore_fields_list:
                 continue
-            # Если поле ключевое, то используем его для поиска QS
+            # Если поле ключевое
             if row_data in key_fields_list:
-                # Делим поле по разделителю
-                splitted_fields = row_data.split('.')
-                if len(splitted_fields) == 2:
-                    attr_value = self.get_attr_value(model, row_data, splitted_fields)
-                    query.update({splitted_fields[0]: attr_value})
+                if len(row_data.split('.')) > 1:
                     cache_set.append(self.item_data[row_data])
-                else:
-                    query.update({row_data: self.item_data[row_data]})
+                query.update(self.get_attr_value_ext(model, row_data))
             else:
-                # Если поля не ключевые, то нужно сначала найти объекты
-                splitted_fields = row_data.split('.')
-                if len(splitted_fields) == 2:
-                    attr_value = self.get_attr_value(model, row_data, splitted_fields)
-                    defaults.update({splitted_fields[0]: attr_value})
-                else:
-                    defaults.update({row_data: self.item_data[row_data]})
+                # Если поле не ключевое
+                defaults.update(self.get_attr_value_ext(model, row_data))
 
         target_object = None
         if cache_set:
