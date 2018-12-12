@@ -148,9 +148,6 @@ class XLSParser:
                 target_object = model.objects.filter(**query).first()
                 self.cache_dict.update({cache_tuple: target_object})
 
-        if not defaults:
-            raise CustomException(f"Не указаны значения для обновления")
-
         with transaction.atomic():
             try:
                 if target_object:
