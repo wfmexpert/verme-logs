@@ -29,7 +29,7 @@ class Command(BaseCommand):
     def get_related_models(self, model):
         fields = apps.get_model(model)._meta.get_fields()
         for field in fields:
-            if field.is_relation and field.related_model:
+            if field.is_relation and field.related_model and not field.one_to_many:
                 yield field.related_model
 
     def get_related_perms(self, model):
@@ -63,8 +63,8 @@ class Command(BaseCommand):
             section_perms = set()
             for model in self.get_section_models(section):
                 model_perms = set()
-                model_perms.update(self.get_model_perms(model))
-                model_perms.update(list(self.get_related_perms(model)))
+                model_perms.update(self.get_model_perms(model['model']))
+                model_perms.update(list(self.get_related_perms(model['model'])))
                 section_perms.update(model_perms)
             group, created = self.get_group_by_section(section)
             if not created:

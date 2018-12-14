@@ -43,9 +43,9 @@ class WfmAdminSite(AdminSite):
 
         def check_section_access(self, key):
             for model in self.sections[key]:
-                splitted_value = model.lower().split('.', 1)
+                splitted_value = model['model'].lower().split('.', 1)
                 permission_string = f'{splitted_value[0]}.add_{splitted_value[1]}'
-                if self.current_user.has_perm(permission_string):
+                if self.current_user.has_perm(permission_string) and model['hidden'] is False:
                     return True
             return False
 
@@ -55,10 +55,10 @@ class WfmAdminSite(AdminSite):
                 if check_section_access(self, key):
                     section.update({'has_module_perms': True})
                 for m_name in self.sections[key]:
-                    app_name, obj_name = m_name.split('.')
+                    app_name, obj_name = m_name['model'].split('.')
                     model = get_model_from_app_list(app_name, obj_name)
                     if model:
-                        section['models'].append(model)
+                        section['models'].append({"model": model, "hidden": m_name['hidden']})
                 if section.get('has_module_perms'):
                     sections_list.append(section)
 
@@ -79,4 +79,3 @@ class WfmAdminSite(AdminSite):
         return columns
 
 wfm_admin = WfmAdminSite()
-
