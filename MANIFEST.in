@@ -3,3 +3,4 @@ include README.rst
 recursive-include applogs/templates *
 recursive-include xlsexport/templates *
 recursive-include wfm_admin/templates *
+recursive-include wfm_admin/static *
