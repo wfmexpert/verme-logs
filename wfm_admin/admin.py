@@ -12,6 +12,39 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+class UserSocialAuthInline(TabularInline):
+    model = UserSocialAuth
+    extra = 0
+    max_num = 1
+
+
+class UserChangeFormAdmin(UserChangeForm):
+    password = ReadOnlyPasswordHashField(label="Пароль",
+                                         help_text="<a href=\"../password/\">Сменить пароль</a>.")
+
+
+site.unregister(User)
+@register(User)
+class UserAccessAdmin(UserAdmin):
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'
+    full_name.short_description = 'ФИО'
+    full_name.admin_order_field = 'full_name'
+
+    form = UserChangeFormAdmin
+    list_display = ('username', 'email', full_name, 'is_active', 'is_superuser', 'last_login')
+    fieldsets = (
+        (None, {'fields': ('username', 'password', 'last_name', 'first_name',
+                           'email')}),
+        ('Доступ', {'fields': ('is_active', 'is_staff', 'is_superuser',
+                               'groups', 'user_permissions')}),
+    )
+    list_filter = ()
+    inlines = [UserSocialAuthInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(full_name=Concat('first_name', Value(' '), 'last_name'))
+
 
 class WfmAdminSite(AdminSite):
     sections = None
@@ -85,38 +118,3 @@ class WfmAdminSite(AdminSite):
         return columns
 
 wfm_admin = WfmAdminSite()
-
-class UserSocialAuthInline(TabularInline):
-    model = UserSocialAuth
-    extra = 0
-    max_num = 1
-
-
-class UserChangeFormAdmin(UserChangeForm):
-    password = ReadOnlyPasswordHashField(label="Пароль",
-                                         help_text="<a href=\"../password/\">Сменить пароль</a>.")
-
-
-class UserAccessAdmin(UserAdmin):
-    def full_name(self):
-        return f'{self.first_name} {self.last_name}'
-    full_name.short_description = 'ФИО'
-    full_name.admin_order_field = 'full_name'
-
-    form = UserChangeFormAdmin
-    list_display = ('username', 'email', full_name, 'is_active', 'is_superuser', 'last_login')
-    fieldsets = (
-        (None, {'fields': ('username', 'password', 'last_name', 'first_name',
-                           'email')}),
-        ('Доступ', {'fields': ('is_active', 'is_staff', 'is_superuser',
-                               'groups', 'user_permissions')}),
-    )
-    list_filter = ()
-    inlines = [UserSocialAuthInline]
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).annotate(full_name=Concat('first_name', Value(' '), 'last_name'))
-
-
-site.unregister(User)
-site.register(User, UserAccessAdmin)
