@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+	{{ block.super }}
+	<li>
+		<form method="POST" action="{% url 'admin_delete_all_clientrecords' %}" onsubmit="return confirm('Вы уверены?')">
+			{% csrf_token %}
+			<input type="submit" value="Очистить журнал" style="background-color: #ba2121">
+		</form>
+	</li>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "admin/index.html" %}
+{% load i18n admin_static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" type="text/css" href="{% static "admin/css/dashboard.css" %}" />
+<style>
+tr.hide {
+	display: none;
+}
+.header-other:before {
+	content: "▶";
+}
+.arrow-down:before {
+	content: "▼";
+}
+.header-other {
+	cursor: pointer;
+}
+</style>
+{% endblock %}
+{% block extrahead %}
+<script type="text/javascript" src="/admin/jsi18n/"></script>
+<script type="text/javascript" src="/static/admin/js/core.js"></script>
+<script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
+<script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
+<script type="text/javascript" src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
+<script type="text/javascript" src="/static/admin/js/actions.js"></script>
+<script type="text/javascript" src="/static/admin/js/urlify.js"></script>
+<script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
+<script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.min.js"></script>
+<script type="text/javascript" src="/static/admin/js/inlines.js"></script>
+<script type="text/javascript" src="/static/admin/js/calendar.js"></script>
+<script type="text/javascript" src="/static/admin/js/admin/DateTimeShortcuts.js"></script>
+
+<script type="text/javascript" src="/admin/jsi18n/"></script>
+<script type="text/javascript" src="/static/admin/js/core.js"></script>
+<script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
+<script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
+<script type="text/javascript" src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
+<script type="text/javascript" src="/static/admin/js/actions.js"></script>
+<script type="text/javascript" src="/static/admin/js/urlify.js"></script>
+<script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
+<script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.min.js"></script>
+<script type="text/javascript" src="/static/admin/js/inlines.js"></script>
+<script type="text/javascript" src="/static/admin/js/calendar.js"></script>
+<script type="text/javascript" src="/static/admin/js/admin/DateTimeShortcuts.js"></script>
+<script type="text/javascript">
+        (function($) {
+            $(document).ready(function() {
+                $('.header-other').click(function(e) {
+                	$(this).toggleClass('arrow-down');
+                    $('.model-other').each(function(i){
+                    	$(this).toggleClass('hide');
+                    });
+                });
+            });
+        })(django.jQuery);
+</script>
+
+{% endblock %}
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block usertools %}
+    {% if has_permission %}
+        <div id="user-tools">
+            {% block welcome-msg %}
+                <strong>{% firstof user.get_short_name user.get_username %}</strong>.
+            {% endblock %}
+            {% block userlinks %}
+                {% if user.is_active and user.is_staff %}
+                    {% url 'django-admindocs-docroot' as docsroot %}
+                    {% if docsroot %}
+                        <a href="{{ docsroot }}">{% trans 'Documentation' %}</a> /
+                    {% endif %}
+                {% endif %}
+                {% if user.has_usable_password %}
+                    <a href="{% url 'admin:password_change' %}">{% trans 'Change password' %}</a> /
+                {% endif %}
+                <a href="{% url 'admin:logout' %}">{% trans 'Log out' %}</a>
+            {% endblock %}
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <link rel="stylesheet" type="text/css" href="/static/wfm_admin/override.css" />
+    <div id="content-main" style="width: 100%">
+        {% if app_list %}
+            {% for col, apps in app_list.items  %}
+                <div class="column" style="float: left;width: 45%;margin-left: 10px">
+                    {% for app in apps %}
+                            <div class="app-{{ app.app_label }} module">
+                                <table>
+                                <caption{% if app.name == 'ДРУГОЕ' %} class="header-other"{% endif %}>
+                                {% if app.name == 'ДРУГОЕ' %}
+                                	{% trans app.name %}
+                                {% else %}
+                                    <a href="{{ app.app_url }}" class="section" title="{% blocktrans with name=app.name %}Models in the {{ name }} application{% endblocktrans %}">{% trans app.name %}</a>
+                                {% endif %}
+                                </caption>
+                                {% for model in app.models %}
+                                    {% if not model.hidden %}
+                                    <tr class="model-{{ model.model.object_name|lower }}{% if app.name == 'ДРУГОЕ' %} model-other hide{% endif %}">
+                                    {% if model.model.admin_url %}
+                                        <th scope="row"><a href="{{ model.model.admin_url }}">{% trans model.model.name %}</a></th>
+                                    {% else %}
+                                        <th scope="row">{% trans model.model.name %}</th>
+                                    {% endif %}
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                                </table>
+                            </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            {% else %}
+                <p>{% trans "You don't have permission to edit anything." %}</p>
+            {% endif %}
+    </div>
+    {% endblock %}
+
+{% block sidebar %}
+    <div id="content-related"></div>
+{% endblock %}
+
+
