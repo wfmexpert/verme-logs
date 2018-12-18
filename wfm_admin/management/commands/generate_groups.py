@@ -46,7 +46,7 @@ class Command(BaseCommand):
             f"{splitted_name[0]}.delete_{splitted_name[1]}"]
 
     def get_group_by_section(self, section):
-        combined_name = f"Управление {section.lower()}"
+        combined_name = f'Управление разделом "{section.upper()}"'
         group, created = Group.objects.get_or_create(name=combined_name)
         return group, created
 
