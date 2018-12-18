@@ -53,7 +53,11 @@ class WfmAdminSite(AdminSite):
         super(WfmAdminSite, self).__init__(*args, **kwargs)
         self.sections = settings.ADMIN_SECTIONS
         self.columns = settings.ADMIN_COLUMNS
-        self.site_header = 'Настройки'
+        try:
+            from apps.config.models import Config
+            self.site_header = Config.get('title', 'Значение не найдено в таблице Config')
+        except:
+            self.site_header = 'Настройки'       
         self.index_title = self.site_header
         self.index_template = 'admin/wfm_admin/index.html'
         self.app_index_template = 'admin/wfm_admin/app_index.html'
