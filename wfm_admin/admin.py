@@ -55,6 +55,8 @@ class WfmAdminSite(AdminSite):
         self.columns = settings.ADMIN_COLUMNS
         self.site_header = 'Настройки'
         self.index_title = self.site_header
+        self.index_template = 'admin/wfm_admin/index.html'
+        self.app_index_template = 'admin/wfm_admin/app_index.html'
         self._registry.update(site._registry)
 
     def get_app_list(self, request):
