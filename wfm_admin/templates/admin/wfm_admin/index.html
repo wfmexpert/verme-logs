@@ -1,5 +1,4 @@
-{% extends "admin/index.html" %}
-{% load i18n admin_static %}
+{% extends "admin/base_site.html" %}
 
 {% block extrastyle %}{{ block.super }}<link rel="stylesheet" type="text/css" href="{% static "admin/css/dashboard.css" %}" />
 <style>
@@ -17,44 +16,15 @@ tr.hide {
 }
 </style>
 {% endblock %}
-{% block extrahead %}
-<script type="text/javascript" src="/admin/jsi18n/"></script>
-<script type="text/javascript" src="/static/admin/js/core.js"></script>
-<script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
-<script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
-<script type="text/javascript" src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
-<script type="text/javascript" src="/static/admin/js/actions.js"></script>
-<script type="text/javascript" src="/static/admin/js/urlify.js"></script>
-<script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
-<script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.min.js"></script>
-<script type="text/javascript" src="/static/admin/js/inlines.js"></script>
-<script type="text/javascript" src="/static/admin/js/calendar.js"></script>
-<script type="text/javascript" src="/static/admin/js/admin/DateTimeShortcuts.js"></script>
+{% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
+</head>
+{% load i18n %}
 
-<script type="text/javascript" src="/admin/jsi18n/"></script>
-<script type="text/javascript" src="/static/admin/js/core.js"></script>
-<script type="text/javascript" src="/static/admin/js/vendor/jquery/jquery.js"></script>
-<script type="text/javascript" src="/static/admin/js/jquery.init.js"></script>
-<script type="text/javascript" src="/static/admin/js/admin/RelatedObjectLookups.js"></script>
-<script type="text/javascript" src="/static/admin/js/actions.js"></script>
-<script type="text/javascript" src="/static/admin/js/urlify.js"></script>
-<script type="text/javascript" src="/static/admin/js/prepopulate.js"></script>
-<script type="text/javascript" src="/static/admin/js/vendor/xregexp/xregexp.min.js"></script>
-<script type="text/javascript" src="/static/admin/js/inlines.js"></script>
-<script type="text/javascript" src="/static/admin/js/calendar.js"></script>
-<script type="text/javascript" src="/static/admin/js/admin/DateTimeShortcuts.js"></script>
-<script type="text/javascript">
-        (function($) {
-            $(document).ready(function() {
-                $('.header-other').click(function(e) {
-                	$(this).toggleClass('arrow-down');
-                    $('.model-other').each(function(i){
-                    	$(this).toggleClass('hide');
-                    });
-                });
-            });
-        })(django.jQuery);
-</script>
+<body class="{% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
+  data-admin-utc-offset="{% now "Z" %}">
+
+<!-- Container -->
+<div id="container">
 
 {% endblock %}
 {% block coltype %}colMS{% endblock %}
@@ -86,8 +56,8 @@ tr.hide {
 {% endblock %}
 
 {% block content %}
-    <link rel="stylesheet" type="text/css" href="/static/wfm_admin/override.css" />
-    <div id="content-main" style="width: 100%">
+    <link rel="stylesheet" type="text/css" href="{% static "admin/css/override.css" %}" />
+    <div id="content" style="width: 100%">
         {% if app_list %}
             {% for col, apps in app_list.items  %}
                 <div class="column" style="float: left;width: 45%;margin-left: 10px">
@@ -126,5 +96,3 @@ tr.hide {
 {% block sidebar %}
     <div id="content-related"></div>
 {% endblock %}
-
-
