@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ title }}. Конфигуратор{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+    {# почему-то site_header из класса SiteAdmin теряется #}
+        {% if site_header != 'Администрирование Django' %}
+            {{ site_header }}. Конфигуратор
+        {% endif %}</a>
+</h1>
+{% endblock %}
+
+{# nbsp, иначе шапка схлопывается, и пропадает кнопка "добавить <объект>" #}
+{% block content_title %}<h1>{% if title and not is_popup %}Настройки{% else %}&nbsp;{% endif %}</h1>{% endblock %}
+{% block nav-global %}{% endblock %}
