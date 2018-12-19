@@ -132,7 +132,12 @@ class ExportTemplate(models.Model):
                     except AttributeError:
                         msg = f"Поле {field.get('field')} отсутствует в объекте"
                         return HttpResponse(msg)
-
+                if not attr_value:
+                    attr_value = ''
+                if isinstance(attr_value, date):
+                    if param_fields and field.get('format'):
+                        cell_format = workbook.add_format()
+                        cell_format.set_num_format(field.get('format', 'DD.MM.YYYY'))
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):
@@ -203,6 +208,12 @@ class ExportTemplate(models.Model):
                     except AttributeError:
                         msg = f"Поле {field.get('field')} отсутствует в объекте"
                         return HttpResponse(msg)
+                if not attr_value:
+                    attr_value = ''
+                if isinstance(attr_value, date):
+                    if param_fields and field.get('format'):
+                        cell_format = workbook.add_format()
+                        cell_format.set_num_format(field.get('format', 'DD.MM.YYYY'))
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):

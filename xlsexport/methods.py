@@ -50,6 +50,8 @@ def get_report_by_model(model=None, queryset=None):
             field_dict = {"name": field.verbose_name, "field": field.name, "width": 15, "key_field": False, "import_ignore": True, "export_ignore": False}
             if field.get_internal_type() == 'DateTimeField':
                 field_dict.update({"format": "%d.%m.%y %H:%M:%S"})
+            if field.get_internal_type() == 'DateField':
+                field_dict.update({"format": "DD.MM.YYYY"})
             if field.get_internal_type() == 'FloatField':
                 field_dict.update({"format": "0.000"})
             params['fields'].append(field_dict)
