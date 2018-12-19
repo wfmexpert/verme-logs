@@ -1,5 +1,6 @@
 import datetime
 import xlrd
+import re
 
 from django.db import transaction
 from django.db.models import Q
@@ -132,8 +133,7 @@ class XLSParser:
                 continue
             # Если поле ключевое
             if row_data in key_fields_list:
-                if len(row_data.split('.')) > 1:
-                    cache_set.append(self.item_data[row_data])
+                cache_set.append(self.item_data[row_data])
                 query.update(self.get_attr_value_ext(model, row_data))
             else:
                 # Если поле не ключевое
@@ -166,11 +166,12 @@ class XLSParser:
     @staticmethod
     def get_struct_from_row(row, rb, template):
 
-        def get_formatted_field(value):
-            try:
+        def get_formatted_field(value, format):
+            pattern = re.compile("^0[.]0+$")
+            if pattern.match(format):
                 value = float(value)
                 return str(value)
-            except (TypeError, ValueError):
+            else:
                 return get_cell_date(value)
 
         def get_cell_date(cell):
@@ -205,7 +206,7 @@ class XLSParser:
         param_fields, fields = template.get_param_fields()
         for idx, item in enumerate(row):
             if 'format' in param_fields[idx]:
-                attr_value = get_formatted_field(clean_value(row[idx]))
+                attr_value = get_formatted_field(clean_value(row[idx]), param_fields[idx]['format'])
             else:
                 attr_value = get_int_as_string(clean_value(row[idx]))
             result.update({param_fields[idx]['field']: attr_value})
