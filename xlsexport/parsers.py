@@ -171,8 +171,7 @@ class XLSParser:
             if pattern.match(format):
                 value = float(value)
                 return str(value)
-            else:
-                return get_cell_date(value)
+            return get_cell_date(value)
 
         def get_cell_date(cell):
             try:
