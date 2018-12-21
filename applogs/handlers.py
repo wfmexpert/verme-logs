@@ -12,12 +12,20 @@ class DBLogsHandler(Handler):
             msg = msg % record.args
 
         params = getattr(record, 'params', None)
-        headquater = getattr(record, 'headquater', '--')
-        source = getattr(record, 'source', '--')
-        method = getattr(record, 'method', '--')
+        headquater = getattr(record, 'headquater', None)
+        source = getattr(record, 'source', None)
+        method = getattr(record, 'method', None)
         duration = getattr(record, 'duration', 0.0)
         tags = getattr(record, 'tags', '')
-        #.using('logs')
+
+        if params:
+            if not source:
+                source = params.get('source', '--')
+            if not method:
+                method = params.get('method', '--')
+            if not headquater:
+                headquater = params.get('user', '--')
+
         ServerRecord.objects.create(level=record.levelname,
                                     message=msg,
                                     params=params,
