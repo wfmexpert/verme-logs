@@ -92,6 +92,7 @@ tr.hide {
             {% for col, apps in app_list.items  %}
                 <div class="column" style="float: left;width: 45%;margin-left: 10px">
                     {% for app in apps %}
+                    {% if app.name != 'ДРУГОЕ' or user.is_superuser %}
                             <div class="app-{{ app.app_label }} module">
                                 <table>
                                 <caption{% if app.name == 'ДРУГОЕ' %} class="header-other"{% endif %}>
@@ -102,7 +103,6 @@ tr.hide {
                                 {% endif %}
                                 </caption>
                                 {% for model in app.models %}
-                                    {% if not model.hidden %}
                                     <tr class="model-{{ model.model.object_name|lower }}{% if app.name == 'ДРУГОЕ' %} model-other hide{% endif %}">
                                     {% if model.model.admin_url %}
                                         <th scope="row"><a href="{{ model.model.admin_url }}">{% trans model.model.name %}</a></th>
@@ -110,10 +110,10 @@ tr.hide {
                                         <th scope="row">{% trans model.model.name %}</th>
                                     {% endif %}
                                     </tr>
-                                    {% endif %}
                                 {% endfor %}
                                 </table>
                             </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
             {% endfor %}
