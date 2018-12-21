@@ -104,6 +104,8 @@ class WfmAdminSite(AdminSite):
                     model = get_model_from_app_list(app_name, obj_name)
                     if model and model['perms'].get('add') and not m_name['hidden']:
                         section['models'].append({"model": model, "hidden": m_name['hidden']})
+                    elif self.current_user.is_superuser and not m_name['hidden']:
+                        section['models'].append({"model": model, "hidden": m_name['hidden']})
                 if section.get('has_module_perms'):
                     sections_list.append(section)
 
