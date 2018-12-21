@@ -24,7 +24,7 @@ class DBLogsHandler(Handler):
             if not method:
                 method = params.get('method', '--')
             if not headquater:
-                headquater = params.get('user', '--')
+                headquater = params.get('username', '--')
 
         ServerRecord.objects.create(level=record.levelname,
                                     message=msg,
