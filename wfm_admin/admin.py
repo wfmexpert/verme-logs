@@ -102,7 +102,7 @@ class WfmAdminSite(AdminSite):
                 for m_name in self.sections[key]:
                     app_name, obj_name = m_name['model'].split('.')
                     model = get_model_from_app_list(app_name, obj_name)
-                    if model:
+                    if model and model['perms'].get('add') and not m_name['hidden']:
                         section['models'].append({"model": model, "hidden": m_name['hidden']})
                 if section.get('has_module_perms'):
                     sections_list.append(section)
