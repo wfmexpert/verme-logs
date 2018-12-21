@@ -12,7 +12,7 @@ class DBLogsHandler(Handler):
             msg = msg % record.args
 
         params = getattr(record, 'params', None)
-        headquater = getattr(record, 'headquater', None)
+        headquater = getattr(record, 'headquater', getattr(record, 'username', None))
         source = getattr(record, 'source', None)
         method = getattr(record, 'method', None)
         duration = getattr(record, 'duration', 0.0)
