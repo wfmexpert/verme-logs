@@ -1,0 +1,25 @@
+{% load i18n %}
+<h3>{% blocktrans with filter_title=title %} By {{ filter_title }} {% endblocktrans %}</h3>
+<ul>
+<input type="date" id="{{ spec.lookup_kwarg_since }}" value="{{ spec.lookup_value_since }}">
+<input type="date" id="{{ spec.lookup_kwarg_until }}" value="{{ spec.lookup_value_until }}">
+<input type="button" id="{{ spec.field_path }}_submit" value="Применить">
+<script>
+	(function($){
+		var sinceElem = $('#{{ spec.lookup_kwarg_since }}')
+		var untilElem = $('#{{ spec.lookup_kwarg_until }}')
+		$('#{{ spec.field_path }}_submit').on('click', function(){
+			var search = location.search
+				.replace(/({{ spec.lookup_kwarg_since }}|{{ spec.lookup_kwarg_until }})[^&]*/g, '')
+				.replace(/&{2,}/g, '&').replace(/^[?&]+|[&]+$/g, '')
+			if (sinceElem.val() != '') search += '&{{ spec.lookup_kwarg_since }}=' + encodeURIComponent(sinceElem.val())
+			if (untilElem.val() != '') search += '&{{ spec.lookup_kwarg_until }}=' + encodeURIComponent(untilElem.val())
+			location.search = search
+		})
+	})(django.jQuery)
+</script>
+{% for choice in choices %}
+    <li{% if choice.selected %} class="selected"{% endif %}>
+    <a href="{{ choice.query_string|iriencode }}" title="{{ choice.display }}">{{ choice.display }}</a></li>
+{% endfor %}
+</ul>
