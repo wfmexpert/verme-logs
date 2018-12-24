@@ -23,7 +23,7 @@ class ServerRecord(models.Model):
     headquater = models.CharField(verbose_name='клиент', max_length=255, blank=True, null=True)
     level = models.CharField(verbose_name='важность', max_length=5, choices=LEVEL_CHOICES, default=LEVEL_CHOICES[0][0],
                              blank=False, null=False)
-    source = models.CharField(verbose_name='источник', max_length=16, blank=True, null=True)
+    source = models.CharField(verbose_name='источник', max_length=32, blank=True, null=True)
     method = models.CharField(verbose_name='метод', max_length=64, blank=True, null=True)
     duration = models.FloatField(verbose_name='продолжительность', default=0.0)
     tags = models.CharField(verbose_name='теги', max_length=512, blank=True, null=True)
