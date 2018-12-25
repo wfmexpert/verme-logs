@@ -33,8 +33,8 @@ class ExportTemplate(models.Model):
     default = models.BooleanField(verbose_name='по умолчанию', default=False)
 
     class Meta:
-        verbose_name = 'Шаблон отчета'
-        verbose_name_plural = 'Шаблоны отчетов'
+        verbose_name = 'Шаблоны импорта / экспорта в Excel'
+        verbose_name_plural = 'Шаблоны импорта / экспорта в Excel'
 
     def to_export(self, queryset=None):
         if self.format == 'xlsx':
@@ -258,5 +258,5 @@ class ImportTemplate(ExportTemplate):
 
     class Meta:
         proxy = True
-        verbose_name = 'Импорт из XLSX/XLS'
-        verbose_name_plural = 'Импорт из XLSX/XLS'
+        verbose_name = 'Импорт из Excel'
+        verbose_name_plural = 'Импорт из Excel'
