@@ -12,10 +12,10 @@ class DBLogsHandler(Handler):
             msg = msg % record.args
 
         params = getattr(record, 'params', None)
-        headquater = getattr(record, 'headquater', None)
         source = getattr(record, 'source', None)
         method = getattr(record, 'method', None)
         duration = getattr(record, 'duration', 0.0)
+        headquater = getattr(record, 'headquater', None)
         tags = getattr(record, 'tags', '')
 
         if params:
@@ -23,6 +23,8 @@ class DBLogsHandler(Handler):
                 source = params.get('source', '--')
             if not method:
                 method = params.get('method', '--')
+            if not duration:
+                duration = params.get('duration', 0.0)
             if not headquater:
                 headquater = params.get('username', '--')
 
