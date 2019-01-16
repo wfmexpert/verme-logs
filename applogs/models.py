@@ -6,6 +6,7 @@ LEVEL_CHOICES = (
     ("INFO", "INFO"),
     ("ERROR", "ERROR"),
     ("DEBUG", "DEBUG"),
+    ("WARNING", "WARNING"),
 )
 
 
@@ -21,7 +22,7 @@ class ClientRecord(models.Model):
 
 class ServerRecord(models.Model):
     headquater = models.CharField(verbose_name='клиент', max_length=255, blank=True, null=True)
-    level = models.CharField(verbose_name='важность', max_length=5, choices=LEVEL_CHOICES, default=LEVEL_CHOICES[0][0],
+    level = models.CharField(verbose_name='важность', max_length=8, choices=LEVEL_CHOICES, default=LEVEL_CHOICES[0][0],
                              blank=False, null=False)
     source = models.CharField(verbose_name='источник', max_length=32, blank=True, null=True)
     method = models.CharField(verbose_name='метод', max_length=64, blank=True, null=True)
