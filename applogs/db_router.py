@@ -26,6 +26,9 @@ class LogsDBRouter():
             return None
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
-        if db == self.LOG_APP_DB_ALIAS:
-            return app_label == self.LOG_APP_NAME
-        return False
+        # если эти база и app'а не имеют к логам отношения, это не наша забота, и решать будут следующие роутеры
+        if db != self.LOG_APP_DB_ALIAS and app_label != self.LOG_APP_NAME:
+            return None
+        # если это и база, и app'а логов, разрешаем миграцию;
+        # в остальных случаях (чужая база и или чужая app'а) - запрещаем
+        return db == self.LOG_APP_DB_ALIAS and app_label == self.LOG_APP_NAME
