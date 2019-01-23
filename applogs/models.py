@@ -21,11 +21,11 @@ class ClientRecord(models.Model):
 
 
 class ServerRecord(models.Model):
-    headquater = models.CharField(verbose_name='клиент', max_length=255, blank=True, null=True)
+    headquater = models.CharField(verbose_name='клиент', max_length=255, blank=True, null=True, db_index=True)
     level = models.CharField(verbose_name='важность', max_length=8, choices=LEVEL_CHOICES, default=LEVEL_CHOICES[0][0],
-                             blank=False, null=False)
-    source = models.CharField(verbose_name='источник', max_length=32, blank=True, null=True)
-    method = models.CharField(verbose_name='метод', max_length=64, blank=True, null=True)
+                             blank=False, null=False, db_index=True)
+    source = models.CharField(verbose_name='источник', max_length=32, blank=True, null=True, db_index=True)
+    method = models.CharField(verbose_name='метод', max_length=64, blank=True, null=True, db_index=True)
     duration = models.FloatField(verbose_name='продолжительность', default=0.0)
     tags = models.CharField(verbose_name='теги', max_length=512, blank=True, null=True)
     message = models.TextField(verbose_name='сообщение')
