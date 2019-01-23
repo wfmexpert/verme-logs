@@ -148,7 +148,7 @@ class HeadquarterFilter(admin.SimpleListFilter):
         def custom_sql():
             query = """WITH RECURSIVE t AS (
                     (SELECT headquater FROM applogs_serverrecord ORDER BY headquater LIMIT 1) UNION ALL
-                    SELECT (SELECT level FROM applogs_serverrecord WHERE headquater > t.headquater ORDER BY headquater LIMIT 1)
+                    SELECT (SELECT headquater FROM applogs_serverrecord WHERE headquater > t.headquater ORDER BY headquater LIMIT 1)
                     FROM t WHERE t.headquater IS NOT NULL ) SELECT headquater FROM t WHERE headquater IS NOT NULL;"""
             with connections['applogs'].cursor() as cursor:
                 cursor.execute(query)
