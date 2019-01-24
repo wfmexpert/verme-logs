@@ -74,92 +74,48 @@ class ServerRecordXLS(XLSWriterUtil):
                 self.write(r, 6, record.message)
 
 
-class SourceFilter(admin.SimpleListFilter):
+class IndexFilter(admin.SimpleListFilter):
+    title = ''
+    parameter_name = ''
+
+    def lookups(self, request, model_admin):
+        def custom_sql():
+            query = f"""WITH RECURSIVE t AS (
+                    (SELECT {self.parameter_name} FROM applogs_serverrecord ORDER BY {self.parameter_name} LIMIT 1) UNION ALL
+                    SELECT (SELECT {self.parameter_name} FROM applogs_serverrecord WHERE {self.parameter_name} > t.{self.parameter_name} ORDER BY {self.parameter_name} LIMIT 1)
+                    FROM t WHERE t.{self.parameter_name} IS NOT NULL ) SELECT {self.parameter_name} FROM t WHERE {self.parameter_name} IS NOT NULL;"""
+            with connections['applogs'].cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            return rows
+        return [(row[0], row[0]) for row in custom_sql()]
+
+    def queryset(self, request, queryset):
+        if self.value() is None:
+            return queryset
+        query_dict = dict()
+        query_dict.update({f'{self.parameter_name}': self.value()})
+        return queryset.filter(Q(**query_dict))
+
+
+class SourceFilter(IndexFilter):
     title = 'Источник'
     parameter_name = 'source'
 
-    def lookups(self, request, model_admin):
-        def custom_sql():
-            query = """WITH RECURSIVE t AS (
-                    (SELECT source FROM applogs_serverrecord ORDER BY source LIMIT 1) UNION ALL
-                    SELECT (SELECT source FROM applogs_serverrecord WHERE source > t.source ORDER BY source LIMIT 1)
-                    FROM t WHERE t.source IS NOT NULL ) SELECT source FROM t WHERE source IS NOT NULL;"""
-            with connections['applogs'].cursor() as cursor:
-                cursor.execute(query)
-                rows = cursor.fetchall()
-            return rows
-        return [(row[0], row[0]) for row in custom_sql()]
 
-    def queryset(self, request, queryset):
-        if self.value() is None:
-            return queryset
-        return queryset.filter(Q(source=self.value()))
-
-
-class MethodFilter(admin.SimpleListFilter):
+class MethodFilter(IndexFilter):
     title = 'Метод'
     parameter_name = 'method'
 
-    def lookups(self, request, model_admin):
-        def custom_sql():
-            query = """WITH RECURSIVE t AS (
-                    (SELECT method FROM applogs_serverrecord ORDER BY method LIMIT 1) UNION ALL
-                    SELECT (SELECT method FROM applogs_serverrecord WHERE method > t.method ORDER BY method LIMIT 1)
-                    FROM t WHERE t.method IS NOT NULL ) SELECT method FROM t WHERE method IS NOT NULL;"""
-            with connections['applogs'].cursor() as cursor:
-                cursor.execute(query)
-                rows = cursor.fetchall()
-            return rows
-        return [(row[0], row[0]) for row in custom_sql()]
 
-    def queryset(self, request, queryset):
-        if self.value() is None:
-            return queryset
-        return queryset.filter(Q(method=self.value()))
-
-
-class LevelFilter(admin.SimpleListFilter):
+class LevelFilter(IndexFilter):
     title = 'Уровень'
     parameter_name = 'level'
 
-    def lookups(self, request, model_admin):
-        def custom_sql():
-            query = """WITH RECURSIVE t AS (
-                    (SELECT level FROM applogs_serverrecord ORDER BY level LIMIT 1) UNION ALL
-                    SELECT (SELECT level FROM applogs_serverrecord WHERE level > t.level ORDER BY level LIMIT 1)
-                    FROM t WHERE t.level IS NOT NULL ) SELECT level FROM t WHERE level IS NOT NULL;"""
-            with connections['applogs'].cursor() as cursor:
-                cursor.execute(query)
-                rows = cursor.fetchall()
-            return rows
-        return [(row[0], row[0]) for row in custom_sql()]
 
-    def queryset(self, request, queryset):
-        if self.value() is None:
-            return queryset
-        return queryset.filter(Q(level=self.value()))
-
-
-class HeadquarterFilter(admin.SimpleListFilter):
+class HeadquarterFilter(IndexFilter):
     title = 'Клиент'
     parameter_name = 'headquater'
-
-    def lookups(self, request, model_admin):
-        def custom_sql():
-            query = """WITH RECURSIVE t AS (
-                    (SELECT headquater FROM applogs_serverrecord ORDER BY headquater LIMIT 1) UNION ALL
-                    SELECT (SELECT headquater FROM applogs_serverrecord WHERE headquater > t.headquater ORDER BY headquater LIMIT 1)
-                    FROM t WHERE t.headquater IS NOT NULL ) SELECT headquater FROM t WHERE headquater IS NOT NULL;"""
-            with connections['applogs'].cursor() as cursor:
-                cursor.execute(query)
-                rows = cursor.fetchall()
-            return rows
-        return [(row[0], row[0]) for row in custom_sql()]
-
-    def queryset(self, request, queryset):
-        if self.value() is None:
-            return queryset
-        return queryset.filter(Q(headquater=self.value()))
 
 
 @admin.register(ServerRecord)
