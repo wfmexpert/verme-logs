@@ -1,21 +1,28 @@
 from django.contrib import admin
+from django.contrib.admin.utils import display_for_field, lookup_field
 
 
-def renamed(attr, name):
-    """ Возвращает переименованное поле для админского list_display.
-        Пример:
+def renamed(attr_name, new_label):
+    """
+    Возвращает переименованное поле для админского list_display.
+    Пример:
     class SmthAdmin(admin.ModelAdmin):
-        value = renamed('value', 'значеие')
-        list_display = ('name', value) """
-    def func(obj):
-        return getattr(obj, attr)
-    func.short_description = name
+        value_upd = renamed('value', 'значеие')
+        list_display = ('name', 'value_upd')
+    """
+    def func(self, obj):
+        f, _, value = lookup_field(attr_name, obj, self)
+        return display_for_field(value, f, self.get_empty_value_display())
+    func.short_description = new_label
+    func.admin_order_field = attr_name
     return func
 
 
 class DateFieldRangeFilter(admin.FieldListFilter):
-    """ Создаёт фильтр по интервалу дат.
-        В отличии от DateFieldListFilter позволяет указать проивольные начальную и конечную даты. """
+    """
+    Создаёт фильтр по интервалу дат.
+    В отличии от DateFieldListFilter позволяет указать проивольные начальную и конечную даты.
+    """
     template = 'admin/date_range_filter.html'
 
     def __init__(self, field, request, params, model, model_admin, field_path):
