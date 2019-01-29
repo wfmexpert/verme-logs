@@ -6,7 +6,7 @@ from django.utils.safestring import mark_safe
 from django.db import models
 from django.apps import apps
 from django.http import HttpResponse
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 import xlsxwriter, xlwt
 import io
@@ -142,6 +142,8 @@ class ExportTemplate(models.Model):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):
                         attr_value = attr_value.strftime(field.get('format'))
+                if isinstance(attr_value, timedelta):
+                    attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float):
                     if param_fields and field.get('format'):
                         cell_format = workbook.add_format()
@@ -218,6 +220,8 @@ class ExportTemplate(models.Model):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):
                         attr_value = attr_value.strftime(field.get('format'))
+                if isinstance(attr_value, timedelta):
+                    attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float):
                     if param_fields and field.get('format'):
                         cell_format = xlwt.XFStyle()

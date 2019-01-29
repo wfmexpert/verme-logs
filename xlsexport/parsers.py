@@ -204,9 +204,14 @@ class XLSParser:
         result = dict()
         param_fields, fields = template.get_param_fields()
         for idx, item in enumerate(row):
-            if 'format' in param_fields[idx]:
-                attr_value = get_formatted_field(clean_value(row[idx]), param_fields[idx]['format'])
+            param_field = param_fields[idx]
+            field_path = param_field['field']
+            if 'format' in param_field:
+                attr_value = get_formatted_field(clean_value(row[idx]), param_field['format'])
+            elif field_path.count('.') == 0 and template.get_model()._meta.get_field(field_path).get_internal_type() == 'DurationField':
+                # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
+                attr_value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
             else:
                 attr_value = get_int_as_string(clean_value(row[idx]))
-            result.update({param_fields[idx]['field']: attr_value})
+            result.update({field_path: attr_value})
         return result
