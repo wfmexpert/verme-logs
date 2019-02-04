@@ -75,6 +75,24 @@ class ExportTemplate(models.Model):
             queryset = queryset.filter(**self.queryset)
         return queryset
 
+    def modify_queryset(self, queryset=None, param_fields=None):
+        if not param_fields:
+            return queryset
+        fields_qs = list()
+
+        for idx, field in enumerate(param_fields):
+            if field.get("export_ignore", False):
+                continue
+            field_name = field.get('field').split('.')
+            if len(field_name) > 1:
+                field_name.pop()
+            for f in self.get_model_fields():
+                if field_name[0] == f.name and f.is_relation and f.related_model is not None:
+                    fields_qs.append('__'.join(field_name))
+        if fields_qs:
+            queryset = queryset.select_related(*fields_qs)
+        return queryset
+
     def check_fields(self):
         # TODO
         pass
@@ -91,7 +109,7 @@ class ExportTemplate(models.Model):
         output = io.BytesIO()
 
         # Create a workbook and add a worksheet.
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        workbook = xlsxwriter.Workbook(output, {'constant_memory': True})
         worksheet = workbook.add_worksheet(self.code)
 
         # Add a bold format to use to highlight cells.
@@ -114,8 +132,11 @@ class ExportTemplate(models.Model):
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1
 
+        # Modify queryset with select_related statements
+        queryset = self.modify_queryset(queryset, param_fields)
+
         # Iterate over the data and write it out row by row.
-        for item in queryset:
+        for item in queryset.iterator():
             for idx, field in enumerate(fields):
                 export_ignore_field = field.get("export_ignore", False)
                 if export_ignore_field:
@@ -192,8 +213,11 @@ class ExportTemplate(models.Model):
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1
 
+        # Modify queryset with select_related statements
+        queryset = self.modify_queryset(queryset, param_fields)
+
         # Iterate over the data and write it out row by row.
-        for item in queryset:
+        for item in queryset.iterator():
             for idx, field in enumerate(fields):
                 export_ignore_field = field.get("export_ignore", False)
                 if export_ignore_field:
@@ -214,8 +238,8 @@ class ExportTemplate(models.Model):
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if param_fields and field.get('format'):
-                        cell_format = workbook.add_format()
-                        cell_format.set_num_format(field.get('format', 'DD.MM.YYYY'))
+                        cell_format = xlwt.XFStyle()
+                        cell_format.set_num_format = field.get('format', 'DD.MM.YYYY')
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if param_fields and field.get('format'):
