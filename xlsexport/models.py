@@ -134,6 +134,7 @@ class ExportTemplate(models.Model):
 
         # Modify queryset with select_related statements
         queryset = self.modify_queryset(queryset, param_fields)
+        queryset = queryset[:200000]
 
         # Iterate over the data and write it out row by row.
         for item in queryset.iterator():
@@ -189,7 +190,7 @@ class ExportTemplate(models.Model):
 
     def to_xls(self, queryset=None):
         param_fields, fields = self.get_param_fields()
-        queryset = self.get_queryset(queryset)[:65000]
+        queryset = self.get_queryset(queryset)
 
         # Create an in-memory output file for the new workbook.
         output = io.BytesIO()
@@ -215,6 +216,7 @@ class ExportTemplate(models.Model):
 
         # Modify queryset with select_related statements
         queryset = self.modify_queryset(queryset, param_fields)
+        queryset = queryset[:65000]
 
         # Iterate over the data and write it out row by row.
         for item in queryset.iterator():
