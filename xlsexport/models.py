@@ -71,8 +71,8 @@ class ExportTemplate(models.Model):
     def get_queryset(self, queryset=None):
         if not queryset:
             queryset = self.get_model().objects.all()
-        if self.queryset:
-            queryset = queryset.filter(**self.queryset)
+            if self.queryset:
+                queryset = queryset.filter(**self.queryset)
         return queryset
 
     def modify_queryset(self, queryset=None, param_fields=None):
