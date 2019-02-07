@@ -152,9 +152,8 @@ class ExportTemplate(models.Model):
                         for x in range(1, len(field_name)):
                             attr_value = getattr(attr_value, field_name[x])
                     except AttributeError:
-                        msg = f"Поле {field.get('field')} отсутствует в объекте"
-                        return HttpResponse(msg)
-                if not attr_value:
+                        attr_value = None
+                if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if param_fields and field.get('format'):
@@ -234,9 +233,8 @@ class ExportTemplate(models.Model):
                         for x in range(1, len(field_name)):
                             attr_value = getattr(attr_value, field_name[x])
                     except AttributeError:
-                        msg = f"Поле {field.get('field')} отсутствует в объекте"
-                        return HttpResponse(msg)
-                if not attr_value:
+                        attr_value = None
+                if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if param_fields and field.get('format'):
