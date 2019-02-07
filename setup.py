@@ -18,6 +18,12 @@ setup(
     url='https://www.verme.ru/',
     author='Ilya Tabakov',
     author_email='i.tabakov@verme.ru',
+    install_requires=[
+        'social-auth-app-django',
+        'xlrd',
+        'XlsxWriter',
+        'xlwt',
+    ],
     classifiers=[
         'Environment :: Web Environment',
         'Framework :: Django',
