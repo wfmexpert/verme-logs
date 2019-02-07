@@ -155,7 +155,7 @@ class ExportTemplate(models.Model):
                         # msg = f"Поле {field.get('field')} отсутствует в объекте"
                         # return HttpResponse(msg)
                         attr_value = None
-                if not attr_value:
+                if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if param_fields and field.get('format'):
@@ -238,7 +238,7 @@ class ExportTemplate(models.Model):
                         # msg = f"Поле {field.get('field')} отсутствует в объекте"
                         # return HttpResponse(msg)
                         attr_value = None
-                if not attr_value:
+                if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if param_fields and field.get('format'):
