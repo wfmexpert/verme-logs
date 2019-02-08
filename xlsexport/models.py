@@ -32,6 +32,9 @@ class ExportTemplate(models.Model):
     params = JSONField(verbose_name='параметры', default=None, null=True, blank=True)
     default = models.BooleanField(verbose_name='по умолчанию', default=False)
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         verbose_name = 'Шаблоны импорта / экспорта в Excel'
         verbose_name_plural = 'Шаблоны импорта / экспорта в Excel'
