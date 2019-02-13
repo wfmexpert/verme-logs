@@ -77,7 +77,7 @@ def complete_view(request, backend, *args, **kwargs):
 
 
 
-    from apps.authutils.backends import set_user_login_details
+    from authutils.backends import set_user_login_details
     # Если в системе залогинен один пользователь, а другой пытается залогиниться,
     # social auth кинет из пайплайна эксепшен об этом. Если пайплайн переопределить
     # и убрать эксепшен, вход вообще не будте работать, потому что do_complete
