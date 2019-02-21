@@ -30,7 +30,7 @@ def with_saml_backend(func):
 
 
 def meta_view(request):
-    complete_url = reverse('authutils:saml:complete')
+    complete_url = reverse('saml:complete')
     saml_backend = load_backend(
         load_strategy(request),
         "saml",
