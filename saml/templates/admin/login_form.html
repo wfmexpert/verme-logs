@@ -51,7 +51,7 @@
     <!--begin::Options-->
     <div class="form-row" style="text-align: center; margin-top: 10px;">
             {% for name, idp in saml_idps.items %}
-            <label>&nbsp;</label><a class="button" style="padding: 10px 15px;" href="{% url 'authutils:saml:begin' %}?idp={{ name }}{% if next %}&next={{ next }}{% endif %}" value="">{{ idp.ui.label }}</a>
+            <label>&nbsp;</label><a class="button" style="padding: 10px 15px;" href="{% url 'saml:begin' %}?idp={{ name }}{% if next %}&next={{ next }}{% endif %}" value="">{{ idp.ui.label }}</a>
                 <span></span>
             <!-- </a> -->
             {% endfor %}
