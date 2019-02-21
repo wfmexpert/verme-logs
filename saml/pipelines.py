@@ -15,10 +15,15 @@ def associate_by_name_id(backend, details, response, request, user=None, *args, 
     saml_superuser_ou = idp.conf.get('verme_superuser_ou', None)
     saml_create_user_employee = idp.conf.get('verme_create_user_employee', False)
     saml_update_user = idp.conf.get('verme_update_user', False)
+    saml_update_employee = idp.conf.get('verme_update_employee', False)
 
     kwargs = None
     if name_id_type == 'username':
         kwargs = {'username': name_id}
+    elif name_id_type == 'number':
+        kwargs = {'employee__number': name_id}
+    elif name_id_type == 'phone':
+        kwargs = {'employee__notify_phone': name_id}
     else:  # email по умолчанию
         kwargs = {'email': name_id}
 
@@ -36,7 +41,7 @@ def associate_by_name_id(backend, details, response, request, user=None, *args, 
     if len(users) == 1:
         # Если включено обновление пользователя
         if saml_update_user:
-            user = create_or_update_employee(backend, saml_superuser_ou, saml_update_user, users[0], **params)
+            user = create_or_update_employee(backend, saml_superuser_ou, saml_update_user, saml_update_employee, users[0], **params)
         else:
             user = users[0]
     # Если нашли несколько пользователей
