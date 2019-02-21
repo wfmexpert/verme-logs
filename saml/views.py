@@ -7,7 +7,8 @@ from django.contrib.auth import logout, REDIRECT_FIELD_NAME
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
-from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from django.views.decorators.csrf import csrf_exempt, csrf_protect, ensure_csrf_cookie
+from django.contrib.admin.sites import AdminSite
 
 from onelogin.saml2 import compat
 from onelogin.saml2.utils import OneLogin_Saml2_Utils
@@ -126,3 +127,16 @@ def logout_view(request, *args, **kwargs):
         url = backend._create_saml_auth(idp, remove_signature_from_get=True).process_slo()
 
     return HttpResponseRedirect(url)
+
+
+# Custom admin login view (with button for authentication via ADFS)
+site = AdminSite()
+site.login_template = 'admin/login_form.html'
+
+
+@ensure_csrf_cookie
+def admin_login_view(request):
+    extra_context = {
+        'saml_idps': getattr(settings, 'SOCIAL_AUTH_SAML_ENABLED_IDPS', {})
+    }
+    return site.login(request, extra_context=extra_context)
