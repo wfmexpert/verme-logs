@@ -16,6 +16,7 @@ from onelogin.saml2.xml_utils import OneLogin_Saml2_XML
 from social_core.actions import do_auth, do_complete
 from social_django.utils import load_backend, load_strategy, psa
 from social_django.views import _do_login
+from .methods import set_user_login_details
 
 
 
@@ -76,9 +77,6 @@ def complete_view(request, backend, *args, **kwargs):
             messages.error(request, "Пользователь не имеет доступа к системе. Убедитесь в том, что пользователю присвоены права доступа в ADFS.")
             return HttpResponseRedirect(reverse('admin:login'))
 
-
-
-    from authutils.backends import set_user_login_details
     # Если в системе залогинен один пользователь, а другой пытается залогиниться,
     # social auth кинет из пайплайна эксепшен об этом. Если пайплайн переопределить
     # и убрать эксепшен, вход вообще не будте работать, потому что do_complete
