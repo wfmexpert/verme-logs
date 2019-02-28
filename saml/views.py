@@ -67,7 +67,6 @@ def auth_view(request, backend, *args, **kwargs):
 def complete_view(request, backend, *args, **kwargs):
     # Check if ADFS doesn't allow access to the Service
     if 'SAMLResponse' in request.POST:
-        print('SAMLResponse IS in request.POST')
         saml_response_encoded = request.POST['SAMLResponse']
         saml_response_string = base64.b64decode(saml_response_encoded).decode('utf-8')
 
@@ -75,7 +74,7 @@ def complete_view(request, backend, *args, **kwargs):
             storage = messages.get_messages(request)
             storage.used = True
             messages.error(request, "Пользователь не имеет доступа к системе. Убедитесь в том, что пользователю присвоены права доступа в ADFS.")
-            return HttpResponseRedirect(reverse('admin:login'))
+            return HttpResponseRedirect(reverse('login'))
 
     # Если в системе залогинен один пользователь, а другой пытается залогиниться,
     # social auth кинет из пайплайна эксепшен об этом. Если пайплайн переопределить
