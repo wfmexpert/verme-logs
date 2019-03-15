@@ -60,6 +60,9 @@ class XLSParser:
         processed_model_list = list()
         processed_model_list.append(model)
         attr_value = None
+        many_to_many_values = list()
+        m2m_flag = False
+
         while True:
             if not current_idx < splitted_length:
                 break
@@ -68,15 +71,30 @@ class XLSParser:
             field = model._meta.get_field(current_field)
             # Если поле - связь к другой модели
             if field.is_relation and field.related_model:
+                if field.many_to_many:
+                    m2m_flag = True
                 # Обновляем модель
                 model = field.related_model
                 processed_model_list.append(model)
             else:
+                data_values = self.item_data[row_data].split('|')
                 if current_idx > 0:
-                    # Формируем массив для поиска объекта модели
-                    attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
-                    # Получили объект модели по значению поля
-                    attr_value = model.objects.filter(**attr_query_dict).first()
+                    if len(data_values) > 1:
+                        for s_value in data_values:
+                            # Формируем массив для поиска объекта модели
+                            attr_query_dict = {splitted_fields[current_idx]: s_value}
+                            # Получили объект модели по значению поля
+                            attr_value = model.objects.filter(**attr_query_dict).first()
+                            many_to_many_values.append(attr_value)
+                        attr_value = many_to_many_values
+                    else:
+                        # Формируем массив для поиска объекта модели
+                        attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
+                        # Получили объект модели по значению поля
+                        attr_value = model.objects.filter(**attr_query_dict).first()
+                        if m2m_flag:
+                            many_to_many_values.append(attr_value)
+                            attr_value = many_to_many_values
                 else:
                     attr_value = self.item_data[row_data]
             current_idx += 1
@@ -86,21 +104,48 @@ class XLSParser:
         # т.к. по ней уже имеем объект
         processed_model_list.pop()
         current_value = attr_value
+
         while True:
             if current_idx2 < 1:
                 break
-            current_object_attr_query = {splitted_fields[current_idx2]: current_value}
             current_model = processed_model_list.pop()
-            if processed_model_list:
-                current_value = current_model.objects.filter(**current_object_attr_query).first()
+            #
+            current_field = splitted_fields[current_idx2]
+            field = current_model._meta.get_field(current_field)
+            #
+            if not field.many_to_many:
+                current_object_attr_query = {splitted_fields[current_idx2]: current_value}
+
+                if processed_model_list:
+                    current_value = current_model.objects.filter(**current_object_attr_query).first()
+                else:
+                    current_value = current_object_attr_query
+            # ManytoMany Field
             else:
-                current_value = current_object_attr_query
+                search_values = current_value.split('|')
+                for s_value in search_values:
+                    current_object_attr_query = {splitted_fields[current_idx2]: s_value}
+                    if processed_model_list:
+                        current_value = current_model.objects.filter(**current_object_attr_query).first()
+                    else:
+                        current_value = current_object_attr_query
+                    many_to_many_values.append(current_value)
+
             current_idx2 -= 1
+
+        result_dict = dict()
+        m2m_dict = dict()
         if splitted_length > 1:
-            result_dict = {splitted_fields[0]: current_value}
+            if many_to_many_values:
+                m2m_dict = {splitted_fields[0]: many_to_many_values}
+            else:
+                result_dict = {splitted_fields[0]: current_value}
         else:
-            result_dict = {splitted_fields[0]: attr_value}
-        return result_dict
+            if many_to_many_values:
+                m2m_dict = {splitted_fields[0]: many_to_many_values}
+            else:
+                result_dict = {splitted_fields[0]: attr_value}
+        return result_dict, m2m_dict
 
     def process_item_data(self, template):
         model = template.get_model()
@@ -126,6 +171,7 @@ class XLSParser:
 
         query = dict()
         defaults = dict()
+        m2m = dict()
         cache_set = list()
 
         for row_data in self.item_data:
@@ -134,10 +180,14 @@ class XLSParser:
             # Если поле ключевое
             if row_data in key_fields_list:
                 cache_set.append(self.item_data[row_data])
-                query.update(self.get_attr_value_ext(model, row_data))
+                query_dict, m2m_dict = self.get_attr_value_ext(model, row_data)
+                query.update(query_dict)
+                m2m.update(m2m_dict)
             else:
                 # Если поле не ключевое
-                defaults.update(self.get_attr_value_ext(model, row_data))
+                query_dict, m2m_dict = self.get_attr_value_ext(model, row_data)
+                defaults.update(query_dict)
+                m2m.update(m2m_dict)
 
         target_object = None
         if cache_set:
@@ -149,15 +199,35 @@ class XLSParser:
                 self.cache_dict.update({cache_tuple: target_object})
 
         with transaction.atomic():
+            def compile_expression(expression):
+                return compile(expression, f'm2m_set', 'exec')
+
+            def exec_expression(expression, target_object, m2m=None):
+                locals_ = {
+                    'target_object': target_object,
+                    'm2m': m2m
+                }
+                exec(compile_expression(expression), None, locals_)
+                return locals_.get('result', None)
             try:
                 if target_object:
                     for key, value in defaults.items():
                         setattr(target_object, key, value)
                     target_object.save()
+
+                    # Установка M2M полей
+                    for m2m_key, m2m_value in m2m.items():
+                        expression = f'target_object.{m2m_key}.set(m2m)'
+                        exec_expression(expression, target_object, m2m_value)
                 else:
                     result_query.update(query)
                     result_query.update(defaults)
                     target_object = model.objects.create(**result_query)
+
+                    # Установка M2M полей
+                    for m2m_key, m2m_value in m2m.items():
+                        expression = f'target_object.{m2m_key}.set(m2m)'
+                        exec_expression(expression, target_object, m2m_value)
                     self.created_items[target_object] = self.item_data
             except Exception:
                 raise
