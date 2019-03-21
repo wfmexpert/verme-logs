@@ -1,4 +1,4 @@
-from ratelimitbackend.admin import *
+from django.contrib.admin import *
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 from django.db.models import Value
@@ -11,7 +11,6 @@ import logging
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-
 
 class UserSocialAuthInline(TabularInline):
     model = UserSocialAuth
