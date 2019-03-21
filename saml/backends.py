@@ -1,5 +1,6 @@
 from onelogin.saml2.auth import OneLogin_Saml2_Auth
 from social_core.backends.saml import OID_USERID, SAMLAuth, SAMLIdentityProvider
+from ratelimitbackend.backends import RateLimitMixin
 
 
 class SAMLIdentityProviderExt(SAMLIdentityProvider):
@@ -26,7 +27,7 @@ class SAMLIdentityProviderExt(SAMLIdentityProvider):
         return cfg
 
 
-class SAMLAuthExt(SAMLAuth):
+class SAMLAuthExt(RateLimitMixin, SAMLAuth):
     """ Кастомный auth backend. Возвращает переопределённый IdentityProvider. """
     def get_idp(self, idp_name):
         idp_config = self.setting('ENABLED_IDPS')[idp_name]

@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='verme-logs',
-    version='1.20',
+    version='1.21',
     packages=find_packages(),
     include_package_data=True,
     license='BSD License',  # example license
@@ -24,6 +24,7 @@ setup(
         'xlrd',
         'XlsxWriter',
         'xlwt',
+        'django-ratelimit-backend',
     ],
     classifiers=[
         'Environment :: Web Environment',
