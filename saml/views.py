@@ -134,7 +134,6 @@ from django.utils.decorators import method_decorator
 from axes.decorators import axes_dispatch
 
 @ensure_csrf_cookie
-@method_decorator(axes_dispatch, name='dispatch')
 def admin_login_view(request):
     extra_context = {
         'saml_idps': getattr(settings, 'SOCIAL_AUTH_SAML_ENABLED_IDPS', {})
