@@ -77,7 +77,7 @@ class XLSParser:
                 model = field.related_model
                 processed_model_list.append(model)
             else:
-                data_values = self.item_data[row_data].split('|')
+                data_values = str(self.item_data[row_data]).split('|')
                 if current_idx > 0:
                     if len(data_values) > 1:
                         for s_value in data_values:
