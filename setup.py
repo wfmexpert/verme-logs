@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='verme-logs',
-    version='1.22.7',
+    version='1.23',
     packages=find_packages(),
     include_package_data=True,
     license='BSD License',  # example license
@@ -24,10 +24,6 @@ setup(
         'xlrd',
         'XlsxWriter',
         'xlwt',
-        'django-axes',
-    ],
-    dependency_links=[
-        'git+https://github.com/wfmexpert/django-axes.git@4.5.4.1#egg=django-axes'
     ],
     classifiers=[
         'Environment :: Web Environment',
