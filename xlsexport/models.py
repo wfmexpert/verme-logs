@@ -73,10 +73,12 @@ class ExportTemplate(models.Model):
         return key_fields
 
     def get_queryset(self, queryset=None):
-        if not queryset:
-            queryset = self.get_model().objects.all()
-            if self.queryset:
-                queryset = queryset.filter(**self.queryset)
+        # @author p.ilinskiy@verme.ru
+        # Критическая уязвимость, в случае получения пустого запроса получаем все данные
+        # if not queryset:
+        #     queryset = self.get_model().objects.all()
+        #     if self.queryset:
+        #         queryset = queryset.filter(**self.queryset)
         return queryset
 
     def modify_queryset(self, queryset=None, param_fields=None):
