@@ -75,10 +75,10 @@ class ExportTemplate(models.Model):
     def get_queryset(self, queryset=None):
         # @author p.ilinskiy@verme.ru
         # Критическая уязвимость, в случае получения пустого запроса получаем все данные
-        # if not queryset:
-        #     queryset = self.get_model().objects.all()
-        #     if self.queryset:
-        #         queryset = queryset.filter(**self.queryset)
+        if queryset == None:
+            queryset = self.get_model().objects.all()
+            if self.queryset:
+                queryset = queryset.filter(**self.queryset)
         return queryset
 
     def modify_queryset(self, queryset=None, param_fields=None):
@@ -180,7 +180,7 @@ class ExportTemplate(models.Model):
                                         # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
                                         # Если он есть
                                         if x + 1 < len(field_name):
-                                            column_name = field_name[x+1]
+                                            column_name = field_name[x + 1]
                                             attr_value = attr_value.values_list(column_name, flat=True)
                                             attr_value = '|'.join(attr_value)
                                         # Иначе возвращаем None, т.к. там в любом случае будет None
@@ -292,7 +292,7 @@ class ExportTemplate(models.Model):
                                         # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
                                         # Если он есть
                                         if x + 1 < len(field_name):
-                                            column_name = field_name[x+1]
+                                            column_name = field_name[x + 1]
                                             attr_value = attr_value.values_list(column_name, flat=True)
                                             attr_value = '|'.join(attr_value)
                                         # Иначе возвращаем None, т.к. там в любом случае будет None
@@ -337,7 +337,6 @@ class ExportTemplate(models.Model):
         response['Content-Disposition'] = f'attachment; filename="{filename}.xls"'
         return response
 
-
     def from_xlsx(self, file=None):
         parser = XLSParser()
         errors = parser.parse(self, file.read())
@@ -352,7 +351,6 @@ class ExportTemplate(models.Model):
 
 
 class ImportTemplate(ExportTemplate):
-
     class Meta:
         proxy = True
         verbose_name = 'Импорт из Excel'
