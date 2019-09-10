@@ -19,6 +19,7 @@ setup(
     author='Ilya Tabakov',
     author_email='i.tabakov@verme.ru',
     install_requires=[
+        'Django',
         'social-auth-app-django',
         'social-auth-core[saml]',
         'xlrd',
