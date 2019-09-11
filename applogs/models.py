@@ -35,3 +35,8 @@ class ServerRecord(models.Model):
     class Meta:
         verbose_name = 'Журнал работы служб'
         verbose_name_plural = 'Журнал работы служб'
+
+    def created_at_str(self, obj):
+        """Отображение времени события с секундами"""
+        return obj.created_at.strftime("%d %b %Y %H:%M:%S")
+    created_at_str.short_description = 'дата создания'
