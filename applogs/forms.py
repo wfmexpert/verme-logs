@@ -4,16 +4,28 @@ from django.contrib.postgres.forms.jsonb import InvalidJSONInput, JSONField
 
 from .models import ServerRecord
 
+
 class JSONFormattedField(JSONField):
     def prepare_value(self, value):
         if isinstance(value, InvalidJSONInput):
             return value
         return json.dumps(value, ensure_ascii=False, indent='  ')
-    
+
+
 class ServerRecordForm(forms.ModelForm):
     class Meta:
         model = ServerRecord
-        fields = '__all__'
+        fields = [
+            'headquater',
+            'level',
+            'source',
+            'method',
+            'duration',
+            'tags',
+            'message',
+            'params',
+            'created_at_str',
+        ]
         field_classes = {
             'params': JSONFormattedField,
         }
