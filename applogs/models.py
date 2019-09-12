@@ -1,5 +1,12 @@
+"""
+Copyright 2019 ООО «Верме»
+
+Модели приложения applogs
+"""
 from django.contrib.postgres.fields import JSONField
-from django.db import models
+from django.db import connections, models
+from django.db.models.query import QuerySet
+
 
 # Уровни важности
 LEVEL_CHOICES = (
@@ -18,6 +25,24 @@ class ClientRecord(models.Model):
     class Meta:
         verbose_name = 'Системная ошибки'
         verbose_name_plural = 'Системные ошибки'
+
+
+class ApproxCountQuerySet(QuerySet):
+    def count(self):
+        """
+        Выводим примерное значение для количества если не применены фильтры
+        Предполагается использование Postgres
+        """
+        if self._result_cache is not None and not self._iter:
+            return len(self._result_cache)
+
+        is_filtered = self.query.where or self.query.having
+        if is_filtered:
+            return super(ApproxCountQuerySet, self).count()
+        cursor = connections[self.db].cursor()
+        cursor.execute("SELECT reltuples FROM pg_class "
+                       "WHERE relname = '%s';" % self.model._meta.db_table)
+        return int(cursor.fetchone()[0])
 
 
 class ServerRecord(models.Model):
