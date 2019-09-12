@@ -148,5 +148,5 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         return actions
 
     def get_queryset(self, request):
-        qs = super(ServerRecordAdmin, self).queryset(request)
+        qs = super(ServerRecordAdmin, self).get_queryset(request)
         return qs._clone(klass=ApproxCountQuerySet)
