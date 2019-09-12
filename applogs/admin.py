@@ -17,6 +17,7 @@ from .models import ClientRecord, ServerRecord
 from .utils import XLSWriterUtil
 from xlsexport.methods import get_report_by_code
 from xlsexport.mixins import AdminExportMixin
+from .models import ApproxCountQuerySet
 
 from django.db.models import Q
 
@@ -144,3 +145,7 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         actions = super().get_actions(request)
         actions.pop('delete_selected', None)
         return actions
+
+    def get_queryset(self, request):
+        qs = super(ServerRecordAdmin, self).queryset(request)
+        return qs._clone(klass=ApproxCountQuerySet)
