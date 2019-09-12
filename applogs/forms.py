@@ -13,9 +13,11 @@ class JSONFormattedField(JSONField):
 
 
 class ServerRecordForm(forms.ModelForm):
+
     class Meta:
         model = ServerRecord
         fields = [
+            'created_at',
             'headquater',
             'level',
             'source',
@@ -24,7 +26,7 @@ class ServerRecordForm(forms.ModelForm):
             'tags',
             'message',
             'params',
-            'created_at_str',
+            # 'created_at_str',
         ]
         field_classes = {
             'params': JSONFormattedField,
@@ -36,3 +38,5 @@ class ServerRecordForm(forms.ModelForm):
 
     class Media:
         js = ('admin/js/ace/ace.js', 'admin/js/acefy-textarea.js')
+
+    # created_at_str = forms.CharField(disabled=True)
