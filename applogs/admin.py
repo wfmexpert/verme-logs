@@ -124,6 +124,7 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     list_filter = (SourceFilter, MethodFilter, LevelFilter, HeadquarterFilter)
     search_fields = ('message', 'tags')
     form = ServerRecordForm
+    show_full_result_count = False
 
     def html_message(self, obj):
         return format_html('<pre>{}</pre>', obj.message[:200])
