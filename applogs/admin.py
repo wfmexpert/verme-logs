@@ -147,6 +147,3 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         actions.pop('delete_selected', None)
         return actions
 
-    def get_queryset(self, request):
-        qs = super(ServerRecordAdmin, self).get_queryset(request)
-        return qs._clone(klass=ApproxCountQuerySet)

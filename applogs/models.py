@@ -5,6 +5,7 @@ Copyright 2019 ООО «Верме»
 """
 from django.contrib.postgres.fields import JSONField
 from django.db import connections, models
+from django.db.models import Manager
 from django.db.models.query import QuerySet
 
 
@@ -45,6 +46,9 @@ class ApproxCountQuerySet(QuerySet):
         return int(cursor.fetchone()[0])
 
 
+ApproxCountManager = Manager.from_queryset(ApproxCountQuerySet)
+
+
 class ServerRecord(models.Model):
     headquater = models.CharField(verbose_name='клиент', max_length=255, blank=True, null=True, db_index=True)
     level = models.CharField(verbose_name='важность', max_length=8, choices=LEVEL_CHOICES, default=LEVEL_CHOICES[0][0],
@@ -56,6 +60,8 @@ class ServerRecord(models.Model):
     message = models.TextField(verbose_name='сообщение')
     params = JSONField(verbose_name='доп. информация', default=None, null=True, blank=True)
     created_at = models.DateTimeField(verbose_name='дата создания', auto_now_add=True)
+
+    objects = ApproxCountManager()
 
     class Meta:
         verbose_name = 'Журнал работы служб'
