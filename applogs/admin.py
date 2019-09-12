@@ -122,6 +122,7 @@ class HeadquarterFilter(IndexFilter):
 @admin.register(ServerRecord)
 class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     list_display = ('created_at', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
+    readonly_fields = ('created_at',)
     list_filter = (SourceFilter, MethodFilter, LevelFilter, HeadquarterFilter)
     search_fields = ('message', 'tags')
     form = ServerRecordForm
