@@ -37,8 +37,7 @@ class ApproxCountQuerySet(QuerySet):
         if self._result_cache is not None and not self._iter:
             return len(self._result_cache)
 
-        is_filtered = self.query.where or self.query.having
-        if is_filtered:
+        if self.query.where:
             return super(ApproxCountQuerySet, self).count()
         cursor = connections[self.db].cursor()
         cursor.execute("SELECT reltuples FROM pg_class "
