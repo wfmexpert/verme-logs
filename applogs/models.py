@@ -28,7 +28,7 @@ class ClientRecord(models.Model):
         verbose_name_plural = 'Системные ошибки'
 
 
-class CountEstimateManager(Manager):
+class CountEstimateQuerySet(QuerySet):
     def count_estimate(self):
         """
         Выводим примерное значение для количества если не применены фильтры
@@ -36,21 +36,22 @@ class CountEstimateManager(Manager):
         """
         from django.db import connections
         # оборачиваем сырой запрос в кастомную функцию Postgres
-        raw_sql = self.get_queryset().query.__str__()
+        # Получаем запрос и параметры
+        sql, sql_params = self.query.get_compiler(using=self.db).as_sql()
+        # Так как в результате у нас будут вложенные одиночные кавычки, эскейпим параметры в формате PostgreSQL
+        sql_params_escaped = tuple(f'\'\'{param}\'\'' for param in sql_params)
+        # as_sql() вернул sql, отформатированный через "%", форматируем
+        sql_inner_formatted = sql % sql_params_escaped
+
         with connections[self.db].cursor() as cursor:
-            cursor.execute(f"""
-            SELECT count_estimate( {raw_sql} );
-            """)
+            cursor.execute(f"SELECT count_estimate( ' {sql_inner_formatted} ' );")
             fetched_result = cursor.fetchone()
             count_estimate = fetched_result[0] if fetched_result else None
 
         if count_estimate is not None and count_estimate > 5000:
             return count_estimate
 
-        return self.get_queryset().count()
-        # cursor.execute("SELECT reltuples FROM pg_class "
-        #                "WHERE relname = '%s';" % self.model._meta.db_table)
-        # return int(cursor.fetchone()[0])
+        return self.count()
 
 
 class ServerRecord(models.Model):
@@ -65,7 +66,7 @@ class ServerRecord(models.Model):
     params = JSONField(verbose_name='доп. информация', default=None, null=True, blank=True)
     created_at = models.DateTimeField(verbose_name='дата создания', auto_now_add=True)
 
-    objects = CountEstimateManager()
+    objects = CountEstimateQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Журнал работы служб'
