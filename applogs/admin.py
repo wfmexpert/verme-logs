@@ -3,7 +3,10 @@ import xlwt
 from datetime import timedelta
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
 from django.db import connections
+from django.db.models import Q
+from django.db.models.query import QuerySet
 from django.http import StreamingHttpResponse
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
@@ -17,9 +20,7 @@ from .models import ClientRecord, ServerRecord
 from .utils import XLSWriterUtil
 from xlsexport.methods import get_report_by_code
 from xlsexport.mixins import AdminExportMixin
-from .models import ApproxCountQuerySet
 
-from django.db.models import Q
 
 @staff_member_required
 def delete_all_client_records_view(request):
@@ -119,6 +120,22 @@ class HeadquarterFilter(IndexFilter):
     parameter_name = 'headquater'
 
 
+class CountEstimatePaginator(Paginator):
+    """
+    Предполагается использование PostgreSQL
+
+    Для маленьких таблиц (<5000 строк) выводится точное количество записей, в остальных случаях - оценочное
+    """
+    def _get_count(self):
+        if getattr(self, '_count', None) is not None:
+            return self._count
+
+        if isinstance(self.object_list, QuerySet) and hasattr(self.object_list, 'count_estimate'):
+            return self.object_list.count_estimate()
+
+        return super().count()
+
+
 @admin.register(ServerRecord)
 class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     list_display = ('created_at_str', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
@@ -127,6 +144,7 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     search_fields = ('message', 'tags')
     form = ServerRecordForm
     show_full_result_count = False
+    paginator = CountEstimatePaginator
 
     def html_message(self, obj):
         return format_html('<pre>{}</pre>', obj.message[:200])
