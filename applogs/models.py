@@ -28,24 +28,29 @@ class ClientRecord(models.Model):
         verbose_name_plural = 'Системные ошибки'
 
 
-class ApproxCountQuerySet(QuerySet):
-    def count(self):
+class CountEstimateManager(Manager):
+    def count_estimate(self):
         """
         Выводим примерное значение для количества если не применены фильтры
         Предполагается использование Postgres
         """
-        if self._result_cache is not None and not self._iter:
-            return len(self._result_cache)
+        from django.db import connections
+        # оборачиваем сырой запрос в кастомную функцию Postgres
+        raw_sql = self.get_queryset().query.__str__()
+        with connections[self.db].cursor() as cursor:
+            cursor.execute(f"""
+            SELECT count_estimate( {raw_sql} );
+            """)
+            fetched_result = cursor.fetchone()
+            count_estimate = fetched_result[0] if fetched_result else None
 
-        if self.query.where:
-            return super(ApproxCountQuerySet, self).count()
-        cursor = connections[self.db].cursor()
-        cursor.execute("SELECT reltuples FROM pg_class "
-                       "WHERE relname = '%s';" % self.model._meta.db_table)
-        return int(cursor.fetchone()[0])
+        if count_estimate is not None and count_estimate > 5000:
+            return count_estimate
 
-
-ApproxCountManager = Manager.from_queryset(ApproxCountQuerySet)
+        return self.get_queryset().count()
+        # cursor.execute("SELECT reltuples FROM pg_class "
+        #                "WHERE relname = '%s';" % self.model._meta.db_table)
+        # return int(cursor.fetchone()[0])
 
 
 class ServerRecord(models.Model):
@@ -60,7 +65,7 @@ class ServerRecord(models.Model):
     params = JSONField(verbose_name='доп. информация', default=None, null=True, blank=True)
     created_at = models.DateTimeField(verbose_name='дата создания', auto_now_add=True)
 
-    objects = ApproxCountManager()
+    objects = CountEstimateManager()
 
     class Meta:
         verbose_name = 'Журнал работы служб'
