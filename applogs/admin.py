@@ -121,8 +121,8 @@ class HeadquarterFilter(IndexFilter):
 
 @admin.register(ServerRecord)
 class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
-    list_display = ('created_at', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
-    readonly_fields = ('created_at',)
+    list_display = ('created_at_str', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
+    readonly_fields = ('created_at_str',)
     list_filter = (SourceFilter, MethodFilter, LevelFilter, HeadquarterFilter)
     search_fields = ('message', 'tags')
     form = ServerRecordForm
@@ -146,4 +146,9 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         actions = super().get_actions(request)
         actions.pop('delete_selected', None)
         return actions
+
+    def created_at_str(self, obj):
+        """Отображение времени события с секундами"""
+        return obj.created_at.strftime("%d %b %Y %H:%M:%S")
+    created_at_str.short_description = 'дата создания'
 
