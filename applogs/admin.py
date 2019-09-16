@@ -127,13 +127,12 @@ class CountEstimatePaginator(Paginator):
     Для маленьких таблиц (<5000 строк) выводится точное количество записей, в остальных случаях - оценочное
     """
     def _get_count(self):
-        if getattr(self, '_count', None) is not None:
-            return self._count
-
         if isinstance(self.object_list, QuerySet) and hasattr(self.object_list, 'count_estimate'):
             return self.object_list.count_estimate()
 
-        return super().count()
+        return self.object_list.count()
+
+    count = property(_get_count)
 
 
 @admin.register(ServerRecord)
