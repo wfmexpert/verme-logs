@@ -48,7 +48,7 @@ class CountEstimateQuerySet(QuerySet):
             fetched_result = cursor.fetchone()
             count_estimate = fetched_result[0] if fetched_result else None
 
-        if count_estimate is not None and count_estimate > 5000:
+        if count_estimate is not None and count_estimate > 1000:
             return count_estimate
 
         return self.count()
