@@ -37,5 +37,3 @@ class ServerRecordForm(forms.ModelForm):
 
     class Media:
         js = ('admin/js/ace/ace.js', 'admin/js/acefy-textarea.js')
-
-    # created_at_str = forms.CharField(disabled=True)
