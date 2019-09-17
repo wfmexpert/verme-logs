@@ -105,3 +105,7 @@ venv.bak/
 
 #idea
 .idea
+
+# utility files for making migrations for a reusable app
+manage.py
+test_settings.py

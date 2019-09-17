@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='verme-logs',
-    version='1.24.1',
+    version='1.25',
     packages=find_packages(),
     include_package_data=True,
     license='BSD License',  # example license
@@ -19,6 +19,7 @@ setup(
     author='Ilya Tabakov',
     author_email='i.tabakov@verme.ru',
     install_requires=[
+        'Django>=2.0',
         'social-auth-app-django',
         'social-auth-core[saml]',
         'xlrd',

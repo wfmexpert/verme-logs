@@ -1,24 +1,23 @@
-import xlwt
-
 from datetime import timedelta
+
+import xlwt
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.paginator import Paginator
 from django.db import connections
-from django.http import StreamingHttpResponse
+from django.db.models import Q
+from django.db.models.query import QuerySet
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
-from django.utils.http import urlquote
 from django.utils.timezone import make_naive
 
+from xlsexport.mixins import AdminExportMixin
 from .forms import ServerRecordForm
 from .models import ClientRecord, ServerRecord
 from .utils import XLSWriterUtil
-from xlsexport.methods import get_report_by_code
-from xlsexport.mixins import AdminExportMixin
 
-from django.db.models import Q
 
 @staff_member_required
 def delete_all_client_records_view(request):
@@ -59,7 +58,8 @@ class ServerRecordXLS(XLSWriterUtil):
         self.col(6).width = self.get_width_for_col(64)
 
         with self.add_style({'font': 'bold on'}):
-            for c, col_name in enumerate(['ДАТА СОЗДАНИЯ', 'КЛИЕНТ', 'ИСТОЧНИК', 'МЕТОД', 'ВАЖНОСТЬ', 'ПРОДОЛЖИТЕЛЬНОСТЬ', 'ОПИСАНИЕ']):
+            for c, col_name in enumerate(
+                    ['ДАТА СОЗДАНИЯ', 'КЛИЕНТ', 'ИСТОЧНИК', 'МЕТОД', 'ВАЖНОСТЬ', 'ПРОДОЛЖИТЕЛЬНОСТЬ', 'ОПИСАНИЕ']):
                 self.write(0, c, col_name)
 
         with self.add_position(1, 0):
@@ -88,6 +88,7 @@ class IndexFilter(admin.SimpleListFilter):
                 cursor.execute(query)
                 rows = cursor.fetchall()
             return rows
+
         return [(row[0], row[0]) for row in custom_sql()]
 
     def queryset(self, request, queryset):
@@ -118,19 +119,40 @@ class HeadquarterFilter(IndexFilter):
     parameter_name = 'headquater'
 
 
+class CountEstimatePaginator(Paginator):
+    """
+    Предполагается использование PostgreSQL
+
+    Для маленьких таблиц (<1000 строк) выводится точное количество записей, в остальных случаях - оценочное
+    """
+
+    def _get_count(self):
+        if isinstance(self.object_list, QuerySet) and hasattr(self.object_list, 'count_estimate'):
+            return self.object_list.count_estimate()
+
+        return self.object_list.count()
+
+    count = property(_get_count)
+
+
 @admin.register(ServerRecord)
 class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
-    list_display = ('created_at', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
+    list_display = ('created_at_str', 'headquater', 'source', 'method', 'level', 'duration_rounded', 'html_message')
+    readonly_fields = ('created_at_str',)
     list_filter = (SourceFilter, MethodFilter, LevelFilter, HeadquarterFilter)
     search_fields = ('message', 'tags')
     form = ServerRecordForm
+    show_full_result_count = False
+    paginator = CountEstimatePaginator
 
     def html_message(self, obj):
         return format_html('<pre>{}</pre>', obj.message[:200])
+
     html_message.short_description = 'Описание'
 
     def duration_rounded(self, obj):
         return round(obj.duration, 3)
+
     duration_rounded.short_description = "Продолжительность"
 
     def has_add_permission(self, request):
@@ -143,3 +165,9 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         actions = super().get_actions(request)
         actions.pop('delete_selected', None)
         return actions
+
+    def created_at_str(self, obj):
+        """Отображение времени события с секундами"""
+        return obj.created_at.strftime('%Y-%m-%d %H:%M:%S')
+
+    created_at_str.short_description = 'дата создания'
