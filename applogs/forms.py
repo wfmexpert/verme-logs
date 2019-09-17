@@ -17,7 +17,6 @@ class ServerRecordForm(forms.ModelForm):
     class Meta:
         model = ServerRecord
         fields = [
-            # 'created_at',
             'headquater',
             'level',
             'source',
@@ -26,7 +25,6 @@ class ServerRecordForm(forms.ModelForm):
             'tags',
             'message',
             'params',
-            # 'created_at_str',
         ]
 
         field_classes = {
