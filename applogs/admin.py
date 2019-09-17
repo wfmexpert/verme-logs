@@ -1,25 +1,22 @@
-import xlwt
-
 from datetime import timedelta
+
+import xlwt
 from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db import connections
 from django.db.models import Q
 from django.db.models.query import QuerySet
-from django.http import StreamingHttpResponse
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
-from django.utils.http import urlquote
 from django.utils.timezone import make_naive
 
+from xlsexport.mixins import AdminExportMixin
 from .forms import ServerRecordForm
 from .models import ClientRecord, ServerRecord
 from .utils import XLSWriterUtil
-from xlsexport.methods import get_report_by_code
-from xlsexport.mixins import AdminExportMixin
 
 
 @staff_member_required
@@ -61,7 +58,8 @@ class ServerRecordXLS(XLSWriterUtil):
         self.col(6).width = self.get_width_for_col(64)
 
         with self.add_style({'font': 'bold on'}):
-            for c, col_name in enumerate(['ДАТА СОЗДАНИЯ', 'КЛИЕНТ', 'ИСТОЧНИК', 'МЕТОД', 'ВАЖНОСТЬ', 'ПРОДОЛЖИТЕЛЬНОСТЬ', 'ОПИСАНИЕ']):
+            for c, col_name in enumerate(
+                    ['ДАТА СОЗДАНИЯ', 'КЛИЕНТ', 'ИСТОЧНИК', 'МЕТОД', 'ВАЖНОСТЬ', 'ПРОДОЛЖИТЕЛЬНОСТЬ', 'ОПИСАНИЕ']):
                 self.write(0, c, col_name)
 
         with self.add_position(1, 0):
@@ -90,6 +88,7 @@ class IndexFilter(admin.SimpleListFilter):
                 cursor.execute(query)
                 rows = cursor.fetchall()
             return rows
+
         return [(row[0], row[0]) for row in custom_sql()]
 
     def queryset(self, request, queryset):
@@ -126,6 +125,7 @@ class CountEstimatePaginator(Paginator):
 
     Для маленьких таблиц (<5000 строк) выводится точное количество записей, в остальных случаях - оценочное
     """
+
     def _get_count(self):
         if isinstance(self.object_list, QuerySet) and hasattr(self.object_list, 'count_estimate'):
             return self.object_list.count_estimate()
@@ -147,10 +147,12 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
 
     def html_message(self, obj):
         return format_html('<pre>{}</pre>', obj.message[:200])
+
     html_message.short_description = 'Описание'
 
     def duration_rounded(self, obj):
         return round(obj.duration, 3)
+
     duration_rounded.short_description = "Продолжительность"
 
     def has_add_permission(self, request):
@@ -166,6 +168,6 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
 
     def created_at_str(self, obj):
         """Отображение времени события с секундами"""
-        return obj.created_at.strftime("%d %b %Y %H:%M:%S")
-    created_at_str.short_description = 'дата создания'
+        return obj.created_at.strftime('%Y-%m-%d %H:%M:%S')
 
+    created_at_str.short_description = 'дата создания'
