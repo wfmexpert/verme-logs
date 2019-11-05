@@ -1,3 +1,8 @@
+"""
+Copyright 2019 ООО «Верме»
+
+Настройки представления моделей приложения applogs в админинстративном разделе
+"""
 from datetime import timedelta
 
 import xlwt
@@ -168,6 +173,7 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
 
     def created_at_str(self, obj):
         """Отображение времени события с секундами"""
-        return obj.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        tz = timezone.get_current_timezone()
+        return obj.created_at.astimezone(tz).strftime('%Y-%m-%d %H:%M:%S')
 
     created_at_str.short_description = 'дата создания'
