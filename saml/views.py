@@ -49,7 +49,7 @@ def error_view(request):
         messages.error(request, "Пользователь не имеет доступа к системе.")
     elif err_type == 'inactive-user':
         messages.error(request, "Пользователь заблокирован.")
-    return HttpResponseRedirect(reverse(settings.get('SOCIAL_AUTH_SAML_LOGIN', 'login')))
+    return HttpResponseRedirect(reverse(getattr(settings, 'SOCIAL_AUTH_SAML_LOGIN', 'login')))
 
 
 # Дальше аналоги вьюх из social_auth/views.py
@@ -74,7 +74,7 @@ def complete_view(request, backend, *args, **kwargs):
             storage = messages.get_messages(request)
             storage.used = True
             messages.error(request, "Пользователь не имеет доступа к системе. Убедитесь в том, что пользователю присвоены права доступа в ADFS.")
-            return HttpResponseRedirect(reverse(settings.get('SOCIAL_AUTH_SAML_LOGIN', 'login')))
+            return HttpResponseRedirect(reverse(getattr(settings, 'SOCIAL_AUTH_SAML_LOGIN', 'login')))
 
     # Если в системе залогинен один пользователь, а другой пытается залогиниться,
     # social auth кинет из пайплайна эксепшен об этом. Если пайплайн переопределить
