@@ -15,7 +15,7 @@ Quick start
         'applogs',
     ]
 
-2. Include the polls URLconf in your project urls.py like this::
+2. Include the URL conf in your project urls.py like this::
 
     path('applogs/', include('applogs.urls')),
 
