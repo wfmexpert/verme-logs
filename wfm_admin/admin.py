@@ -1,6 +1,6 @@
 from django.contrib.admin import *
-from django.contrib.auth.admin import UserAdmin
-from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin, GroupAdmin
+from django.contrib.auth.models import User, Group
 from django.db.models import Value
 from django.db.models.functions import Concat
 from django.contrib.auth.forms import ReadOnlyPasswordHashField, UserChangeForm
@@ -18,6 +18,36 @@ class UserSocialAuthInline(TabularInline):
     max_num = 1
 
 
+class DisablePermissionsMixin(object):
+    """
+    Запрещает добавление разрешений на модели, указанные в разделе disabled_section
+    """
+
+    disabled_section = 'ДРУГОЕ'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.disabled_models = []
+        self.disabled_permissions = []
+        for line in settings.ADMIN_SECTIONS.get(self.disabled_section, []):
+            model = line.get('model', '').split('.')[-1].lower()
+            if model:
+                self.disabled_models.append(model)
+                for prefix in ['add', 'change', 'delete', 'view']:
+                    self.disabled_permissions.append(f'{prefix}_{model}')
+
+    def formfield_for_manytomany(self, db_field, request=None, **kwargs):
+        if db_field.name in self.permission_fields:
+            qs = kwargs.get('queryset', db_field.remote_field.model.objects)
+            if self.disabled_permissions:
+                qs = qs.exclude(codename__in=self.disabled_permissions)
+            # Avoid a major performance hit resolving permission names which
+            # triggers a content_type load:
+            kwargs['queryset'] = qs.select_related('content_type')
+        return super().formfield_for_manytomany(db_field, request=request, **kwargs)
+
+
 class UserChangeFormAdmin(UserChangeForm):
     password = ReadOnlyPasswordHashField(label="Пароль",
                                          help_text="<a href=\"../password/\">Сменить пароль</a>.")
@@ -25,7 +55,7 @@ class UserChangeFormAdmin(UserChangeForm):
 
 site.unregister(User)
 @register(User)
-class UserAccessAdmin(UserAdmin):
+class UserAccessAdmin(DisablePermissionsMixin, UserAdmin):
     def full_name(self):
         return f'{self.first_name} {self.last_name}'
     full_name.short_description = 'ФИО'
@@ -41,9 +71,16 @@ class UserAccessAdmin(UserAdmin):
     )
     list_filter = ()
     inlines = [UserSocialAuthInline]
+    permission_fields = ['user_permissions']
 
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(full_name=Concat('first_name', Value(' '), 'last_name'))
+
+
+site.unregister(Group)
+@register(Group)
+class GroupAccessAdmin(DisablePermissionsMixin, GroupAdmin):
+    permission_fields = ['permissions']
 
 
 class WfmAdminSite(AdminSite):
@@ -89,7 +126,7 @@ class WfmAdminSite(AdminSite):
         def check_section_access(self, key):
             for model in self.sections[key]:
                 splitted_value = model['model'].lower().split('.', 1)
-                permission_string = f'{splitted_value[0]}.add_{splitted_value[1]}'
+                permission_string = f'{splitted_value[0]}.view_{splitted_value[1]}'
                 if self.current_user.has_perm(permission_string) and model['hidden'] is False:
                     return True
             return False
@@ -102,7 +139,7 @@ class WfmAdminSite(AdminSite):
                 for m_name in self.sections[key]:
                     app_name, obj_name = m_name['model'].split('.')
                     model = get_model_from_app_list(app_name, obj_name)
-                    if model and model['perms'].get('add') and not m_name['hidden']:
+                    if model and model['perms'].get('view') and not m_name['hidden']:
                         section['models'].append({"model": model, "hidden": m_name['hidden']})
                     elif self.current_user.is_superuser and not m_name['hidden']:
                         section['models'].append({"model": model, "hidden": m_name['hidden']})
@@ -126,3 +163,4 @@ class WfmAdminSite(AdminSite):
         return columns
 
 wfm_admin = WfmAdminSite()
+
