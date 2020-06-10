@@ -10,6 +10,7 @@ from django.http import HttpResponse
 from datetime import datetime, date, timedelta
 
 import xlsxwriter, xlwt
+import csv
 import io
 import string
 
@@ -46,7 +47,7 @@ class ExportTemplate(models.Model):
         elif self.format == 'xls':
             return self.to_xls(queryset)
         elif self.format == 'csv':
-            return self.to_xlsx(queryset)
+            return self.to_csv(queryset)
         return None
 
     def get_model(self):
@@ -140,7 +141,6 @@ class ExportTemplate(models.Model):
 
         # Modify queryset with select_related statements
         queryset = self.modify_queryset(queryset, param_fields)
-        queryset = queryset[:200000]
 
         # Iterate over the data and write it out row by row.
         for item in queryset.iterator():
@@ -337,6 +337,99 @@ class ExportTemplate(models.Model):
         response['Content-Disposition'] = f'attachment; filename="{filename}.xls"'
         return response
 
+    def to_csv(self, queryset=None):
+        param_fields, fields = self.get_param_fields()
+        queryset = self.get_queryset(queryset)
+        
+        filename = self.params.get('filename', self.code)
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+
+        # Create a csv writer.
+        writer = csv.writer(response)
+
+        # Заполнение заголовков
+        header = []
+        for idx, field in enumerate(fields):
+            if not param_fields:
+                header.append(field.verbose_name)
+            else:
+                export_ignore_field = field.get("export_ignore", False)
+                if export_ignore_field:
+                    continue
+                header.append(field.get("name"))
+        
+        writer.writerow(header)
+
+        # Modify queryset with select_related statements
+        queryset = self.modify_queryset(queryset, param_fields)
+
+        # Iterate over the data and write it out row by row.
+        data = []
+        for item in queryset.iterator():
+            for idx, field in enumerate(fields):
+                export_ignore_field = field.get("export_ignore", False)
+                if export_ignore_field:
+                    continue
+                cell_format = None
+                if not param_fields:
+                    # Если не заданы параметры (поля в описании шаблона)
+                    attr_value = getattr(item, field.name)
+                else:
+                    try:
+                        # Делим поле на части по разделителю точке
+                        field_name = field.get('field').split('.')
+                        # Берем первую часть
+                        attr_value = getattr(item, field_name[0])
+                        # Если поле оказалось ManyToMany
+                        try:
+                            if item._meta.get_field(field_name[0]).many_to_many:
+                                # То берем следующий индекс как название колонки
+                                # Если он есть
+                                if len(field_name) > 1:
+                                    column_name = field_name[1]
+                                    attr_value = attr_value.values_list(column_name, flat=True)
+                                    attr_value = '|'.join(attr_value)
+                                else:
+                                    attr_value = None
+                            else:
+                                # Для всех оставшихся частей, получаем значение атрибутов циклом
+                                for x in range(1, len(field_name)):
+                                    # Проверяем тип поля, не является ли оно ManyToMany
+                                    if not attr_value._meta.get_field(field_name[x]).many_to_many:
+                                        # Если поле "нормальное", то просто проходим по циклу далее
+                                        attr_value = getattr(attr_value, field_name[x])
+                                    else:
+                                        # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
+                                        # Если он есть
+                                        if x + 1 < len(field_name):
+                                            column_name = field_name[x + 1]
+                                            attr_value = attr_value.values_list(column_name, flat=True)
+                                            attr_value = '|'.join(attr_value)
+                                        # Иначе возвращаем None, т.к. там в любом случае будет None
+                                        else:
+                                            attr_value = None
+                        except FieldDoesNotExist:
+                            pass
+                    except AttributeError:
+                        attr_value = None
+                if not attr_value and attr_value is not False:  # Output False explicitly
+                    attr_value = ''
+                if isinstance(attr_value, date):
+                    if param_fields and field.get('format'):
+                        attr_value = date.strftime(attr_value, field.get('format', 'DD.MM.YYYY'))
+                if isinstance(attr_value, datetime):
+                    attr_value = attr_value.astimezone()
+                    if param_fields and field.get('format'):
+                        attr_value = attr_value.strftime(field.get('format'))
+                if isinstance(attr_value, timedelta):
+                    attr_value = int(attr_value.total_seconds() / 60)
+                data.append(attr_value)
+            writer.writerow(data)
+            data = []
+        
+        return response
+    
     def from_xlsx(self, file=None):
         parser = XLSParser()
         errors = parser.parse(self, file.read())
