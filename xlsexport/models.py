@@ -350,7 +350,7 @@ class ExportTemplate(models.Model):
 
         # Заполнение заголовков
         header = []
-        for idx, field in enumerate(fields):
+        for field in fields:
             if not param_fields:
                 header.append(field.verbose_name)
             else:
@@ -367,11 +367,10 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         data = []
         for item in queryset.iterator():
-            for idx, field in enumerate(fields):
+            for field in fields:
                 export_ignore_field = field.get("export_ignore", False)
                 if export_ignore_field:
                     continue
-                cell_format = None
                 if not param_fields:
                     # Если не заданы параметры (поля в описании шаблона)
                     attr_value = getattr(item, field.name)
