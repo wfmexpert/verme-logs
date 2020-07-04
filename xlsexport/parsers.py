@@ -264,11 +264,13 @@ class XLSParser:
     def get_struct_from_row(row, rb, template):
 
         def get_formatted_field(value, format):
-            pattern = re.compile("^0[.]0+$")
-            if pattern.match(format):
-                value = float(value)
-                return value
-            elif format.find("#") == -1:  # Так форматируются поля int/float, т.е. предполагаем дату
+            if format.find(".0") != -1:
+                return get_float(value)
+            elif format.find("#") != -1:
+                return get_int(value)
+            elif format == "@":
+                return str(value)
+            else:
                 return get_cell_date(value)
 
         def get_cell_date(cell):
@@ -308,10 +310,6 @@ class XLSParser:
             value = None
             if 'format' in param_field:
                 value = get_formatted_field(attr_value, param_field['format'])
-                if not value and isinstance(attr_value, str):
-                    value = get_int(attr_value)
-                    if not value:
-                        value = get_float(attr_value)
                 if not value and attr_value:
                     value = attr_value
             elif field_path.count('.') == 0 and template.get_model()._meta.get_field(field_path).get_internal_type() == 'DurationField':
