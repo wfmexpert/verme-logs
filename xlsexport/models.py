@@ -169,6 +169,8 @@ class ExportTemplate(models.Model):
                                     attr_value = '|'.join(attr_value)
                                 else:
                                     attr_value = None
+                            elif isinstance(item._meta.get_field(field_name[0]), JSONField):
+                                attr_value = getattr(item, field_name[0]).get(field_name[1])
                             else:
                                 # Для всех оставшихся частей, получаем значение атрибутов циклом
                                 for x in range(1, len(field_name)):
@@ -340,7 +342,7 @@ class ExportTemplate(models.Model):
     def to_csv(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
-        
+
         filename = self.params.get('filename', self.code)
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
@@ -358,7 +360,7 @@ class ExportTemplate(models.Model):
                 if export_ignore_field:
                     continue
                 header.append(field.get("name"))
-        
+
         writer.writerow(header)
 
         # Modify queryset with select_related statements
@@ -426,9 +428,9 @@ class ExportTemplate(models.Model):
                 data.append(attr_value)
             writer.writerow(data)
             data = []
-        
+
         return response
-    
+
     def from_xlsx(self, file=None):
         parser = XLSParser()
         errors = parser.parse(self, file.read())

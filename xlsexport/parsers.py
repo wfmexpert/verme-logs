@@ -2,10 +2,11 @@ import datetime
 import xlrd
 import re
 
+from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
 from django.db.models import Q
 
-from collections import defaultdict
+from collections import defaultdict, Mapping
 
 
 class CustomException(Exception):
@@ -62,6 +63,7 @@ class XLSParser:
         attr_value = None
         many_to_many_values = list()
         m2m_flag = False
+        json_values = dict()
 
         while True:
             if not current_idx < splitted_length:
@@ -76,6 +78,14 @@ class XLSParser:
                 # Обновляем модель
                 model = field.related_model
                 processed_model_list.append(model)
+            elif isinstance(field, JSONField):
+                json_key = splitted_fields[current_idx+1]
+                attr_value = self.item_data['.'.join(splitted_fields)]
+                if current_field in json_values:
+                    json_values[current_field][json_key] = attr_value
+                else:
+                    json_values[current_field] = {json_key: attr_value}
+                break
             else:
                 data_values = str(self.item_data[row_data]).split('|')
                 if current_idx > 0:
@@ -135,17 +145,19 @@ class XLSParser:
 
         result_dict = dict()
         m2m_dict = dict()
+        field_name = splitted_fields[0]
         if splitted_length > 1:
             if many_to_many_values:
-                m2m_dict = {splitted_fields[0]: many_to_many_values}
-            else:
-                result_dict = {splitted_fields[0]: current_value}
+                m2m_dict = {field_name: many_to_many_values}
+            elif field_name not in json_values:
+                result_dict = {field_name: current_value}
         else:
             if many_to_many_values:
-                m2m_dict = {splitted_fields[0]: many_to_many_values}
-            else:
-                result_dict = {splitted_fields[0]: attr_value}
-        return result_dict, m2m_dict
+                m2m_dict = {field_name: many_to_many_values}
+            elif field_name not in json_values:
+                result_dict = {field_name: attr_value}
+
+        return result_dict, m2m_dict, json_values
 
     def process_item_data(self, template):
         model = template.get_model()
@@ -169,25 +181,34 @@ class XLSParser:
         # Для update_or_create
         result_query = dict()
 
+        def dict_merge(dct, merge_dct):
+            for k, v in merge_dct.items():
+                if (k in dct and isinstance(dct[k], dict)
+                        and isinstance(merge_dct[k], Mapping)):
+                    dict_merge(dct[k], merge_dct[k])
+                else:
+                    dct[k] = merge_dct[k]
+
         query = dict()
         defaults = dict()
         m2m = dict()
         cache_set = list()
-
+        json_fields_to_update = dict()
         for row_data in self.item_data:
             if row_data in ignore_fields_list:
                 continue
             # Если поле ключевое
             if row_data in key_fields_list:
                 cache_set.append(self.item_data[row_data])
-                query_dict, m2m_dict = self.get_attr_value_ext(model, row_data)
+                query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data)
                 query.update(query_dict)
                 m2m.update(m2m_dict)
             else:
                 # Если поле не ключевое
-                query_dict, m2m_dict = self.get_attr_value_ext(model, row_data)
+                query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data)
                 defaults.update(query_dict)
                 m2m.update(m2m_dict)
+                dict_merge(json_fields_to_update, json_dict)
 
         target_object = None
         if cache_set:
@@ -213,6 +234,10 @@ class XLSParser:
                 if target_object:
                     for key, value in defaults.items():
                         setattr(target_object, key, value)
+                    # Установка значений JSON полей
+                    for k, v in json_fields_to_update.items():
+                        json_field = getattr(target_object, k)
+                        dict_merge(json_field, v)
                     target_object.save()
 
                     # Установка M2M полей
@@ -222,6 +247,8 @@ class XLSParser:
                 else:
                     result_query.update(query)
                     result_query.update(defaults)
+                    result_query.update(json_fields_to_update)
+
                     target_object = model.objects.create(**result_query)
 
                     # Установка M2M полей
