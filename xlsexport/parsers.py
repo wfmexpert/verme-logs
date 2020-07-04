@@ -312,6 +312,8 @@ class XLSParser:
                     value = get_int(attr_value)
                     if not value:
                         value = get_float(attr_value)
+                if not value and attr_value:
+                    value = attr_value
             elif field_path.count('.') == 0 and template.get_model()._meta.get_field(field_path).get_internal_type() == 'DurationField':
                 # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
                 value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
