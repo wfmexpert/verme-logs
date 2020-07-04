@@ -267,26 +267,27 @@ class XLSParser:
             pattern = re.compile("^0[.]0+$")
             if pattern.match(format):
                 value = float(value)
-                return str(value)
-            return get_cell_date(value)
+                return value
+            elif format.find("#") == -1:  # Так форматируются поля int/float, т.е. предполагаем дату
+                return get_cell_date(value)
 
         def get_cell_date(cell):
             try:
                 return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
             except TypeError:
-                return cell
+                pass
 
-        def get_number(value):
+        def get_float(value):
             try:
-                number = int(value)
-                return str(number)
+                return float(value)
             except (TypeError, ValueError):
-                return value
+                pass
 
-        def get_int_as_string(value):
-            if isinstance(value, str):
-                return value
-            return str(int(value))
+        def get_int(value):
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                pass
 
         def clean_value(value):
             if isinstance(value, (bytes, str)):
@@ -303,12 +304,18 @@ class XLSParser:
         for idx, item in enumerate(row):
             param_field = param_fields[idx]
             field_path = param_field['field']
+            attr_value = clean_value(row[idx])
+            value = None
             if 'format' in param_field:
-                attr_value = get_formatted_field(clean_value(row[idx]), param_field['format'])
+                value = get_formatted_field(attr_value, param_field['format'])
+                if not value and isinstance(attr_value, str):
+                    value = get_int(attr_value)
+                    if not value:
+                        value = get_float(attr_value)
             elif field_path.count('.') == 0 and template.get_model()._meta.get_field(field_path).get_internal_type() == 'DurationField':
                 # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
-                attr_value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
-            else:
-                attr_value = get_int_as_string(clean_value(row[idx]))
-            result.update({field_path: attr_value})
+                value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
+            elif attr_value:
+                value = attr_value
+            result.update({field_path: value})
         return result

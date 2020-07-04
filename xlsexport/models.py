@@ -204,7 +204,7 @@ class ExportTemplate(models.Model):
                         attr_value = attr_value.strftime(field.get('format'))
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
-                if isinstance(attr_value, float):
+                if isinstance(attr_value, float) or isinstance(attr_value, int):
                     if param_fields and field.get('format'):
                         cell_format = workbook.add_format()
                         cell_format.set_num_format(field.get('format'))
