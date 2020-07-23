@@ -237,6 +237,9 @@ class XLSParser:
                     # Установка значений JSON полей
                     for k, v in json_fields_to_update.items():
                         json_field = getattr(target_object, k)
+                        if not json_field:
+                            json_field = dict()
+                            setattr(target_object, k, json_field)
                         dict_merge(json_field, v)
                     target_object.save()
 
