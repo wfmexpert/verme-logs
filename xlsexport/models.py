@@ -59,8 +59,19 @@ class ExportTemplate(models.Model):
         return fields
 
     def get_param_fields(self):
-        param_fields = self.params.get('fields')
-        fields = param_fields or self.get_model_fields()
+        fields = self.get_model_fields()
+        param_fields = self.params.get('fields', list())
+        if not param_fields:
+            for field in fields:
+                if isinstance(field, models.ManyToOneRel):
+                    continue
+                param_fields.append({
+                    "name": field.verbose_name if hasattr(field, "verbose_name") else field.name,
+                    "field": field.name,
+                    "key_field": field.primary_key,
+                    "export_ignore": False,
+                    "import_ignore": False
+                })
         return param_fields, fields
 
     def get_key_fields(self):
@@ -125,16 +136,12 @@ class ExportTemplate(models.Model):
         letters = string.ascii_uppercase
 
         # Установка ширины колонок и заполнение заголовков
-        for idx, field in enumerate(fields):
-            if not param_fields:
-                worksheet.set_column(f'{letters[idx]}:{letters[idx]}', 15)
-                worksheet.write(f'{letters[idx]}1', f'{field.verbose_name}', bold)
-            else:
-                export_ignore_field = field.get("export_ignore", False)
-                if export_ignore_field:
-                    continue
-                worksheet.set_column(f'{letters[idx]}:{letters[idx]}', field.get("width", 15))
-                worksheet.write(f'{letters[idx]}1', f'{field.get("name")}', bold)
+        for idx, field in enumerate(param_fields):
+            export_ignore_field = field.get("export_ignore", False)
+            if export_ignore_field:
+                continue
+            worksheet.set_column(f'{letters[idx]}:{letters[idx]}', field.get("width", 15))
+            worksheet.write(f'{letters[idx]}1', f'{field.get("name")}', bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1
@@ -144,68 +151,64 @@ class ExportTemplate(models.Model):
 
         # Iterate over the data and write it out row by row.
         for item in queryset.iterator():
-            for idx, field in enumerate(fields):
+            for idx, field in enumerate(param_fields):
                 export_ignore_field = field.get("export_ignore", False)
                 if export_ignore_field:
                     continue
                 cell_format = None
-                if not param_fields:
-                    # Если не заданы параметры (поля в описании шаблона)
-                    attr_value = getattr(item, field.name)
-                else:
+                try:
+                    # Делим поле на части по разделителю точке
+                    field_name = field.get('field').split('.')
+                    # Берем первую часть
+                    attr_value = getattr(item, field_name[0])
+                    # Если поле оказалось ManyToMany
                     try:
-                        # Делим поле на части по разделителю точке
-                        field_name = field.get('field').split('.')
-                        # Берем первую часть
-                        attr_value = getattr(item, field_name[0])
-                        # Если поле оказалось ManyToMany
-                        try:
-                            if item._meta.get_field(field_name[0]).many_to_many:
-                                # То берем следующий индекс как название колонки
-                                # Если он есть
-                                if len(field_name) > 1:
-                                    column_name = field_name[1]
-                                    attr_value = attr_value.values_list(column_name, flat=True)
-                                    attr_value = '|'.join(attr_value)
-                                else:
-                                    attr_value = None
-                            elif isinstance(item._meta.get_field(field_name[0]), JSONField):
-                                attr_value = getattr(item, field_name[0]).get(field_name[1])
+                        if item._meta.get_field(field_name[0]).many_to_many:
+                            # То берем следующий индекс как название колонки
+                            # Если он есть
+                            if len(field_name) > 1:
+                                column_name = field_name[1]
+                                attr_value = attr_value.values_list(column_name, flat=True)
+                                attr_value = '|'.join(attr_value)
                             else:
-                                # Для всех оставшихся частей, получаем значение атрибутов циклом
-                                for x in range(1, len(field_name)):
-                                    # Проверяем тип поля, не является ли оно ManyToMany
-                                    if not attr_value._meta.get_field(field_name[x]).many_to_many:
-                                        # Если поле "нормальное", то просто проходим по циклу далее
-                                        attr_value = getattr(attr_value, field_name[x])
+                                attr_value = None
+                        elif isinstance(item._meta.get_field(field_name[0]), JSONField):
+                            attr_value = getattr(item, field_name[0]).get(field_name[1])
+                        else:
+                            # Для всех оставшихся частей, получаем значение атрибутов циклом
+                            for x in range(1, len(field_name)):
+                                # Проверяем тип поля, не является ли оно ManyToMany
+                                if not attr_value._meta.get_field(field_name[x]).many_to_many:
+                                    # Если поле "нормальное", то просто проходим по циклу далее
+                                    attr_value = getattr(attr_value, field_name[x])
+                                else:
+                                    # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
+                                    # Если он есть
+                                    if x + 1 < len(field_name):
+                                        column_name = field_name[x + 1]
+                                        attr_value = attr_value.values_list(column_name, flat=True)
+                                        attr_value = '|'.join(attr_value)
+                                    # Иначе возвращаем None, т.к. там в любом случае будет None
                                     else:
-                                        # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
-                                        # Если он есть
-                                        if x + 1 < len(field_name):
-                                            column_name = field_name[x + 1]
-                                            attr_value = attr_value.values_list(column_name, flat=True)
-                                            attr_value = '|'.join(attr_value)
-                                        # Иначе возвращаем None, т.к. там в любом случае будет None
-                                        else:
-                                            attr_value = None
-                        except FieldDoesNotExist:
-                            pass
-                    except AttributeError:
-                        attr_value = None
-                if not attr_value and attr_value is not False:  # Output False explicitly
+                                        attr_value = None
+                    except FieldDoesNotExist:
+                        pass
+                except AttributeError:
+                    attr_value = None
+                if attr_value is None:  # Output False explicitly
                     attr_value = ''
                 if isinstance(attr_value, date):
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         cell_format = workbook.add_format()
                         cell_format.set_num_format(field.get('format', 'DD.MM.YYYY'))
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         attr_value = attr_value.strftime(field.get('format'))
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float) or isinstance(attr_value, int):
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         cell_format = workbook.add_format()
                         cell_format.set_num_format(field.get('format'))
                 if not cell_format:
@@ -240,14 +243,11 @@ class ExportTemplate(models.Model):
         bold = xlwt.easyxf('font: bold on')
 
         # Установка ширины колонок и заполнение заголовков
-        for idx, field in enumerate(fields):
-            if not param_fields:
-                worksheet.write(0, idx, field.verbose_name, bold)
-            else:
-                export_ignore_field = field.get("export_ignore", False)
-                if export_ignore_field:
-                    continue
-                worksheet.write(0, idx, field.get("name"), bold)
+        for idx, field in enumerate(param_fields):
+            export_ignore_field = field.get("export_ignore", False)
+            if export_ignore_field:
+                continue
+            worksheet.write(0, idx, field.get("name"), bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1
@@ -258,67 +258,63 @@ class ExportTemplate(models.Model):
 
         # Iterate over the data and write it out row by row.
         for item in queryset.iterator():
-            for idx, field in enumerate(fields):
+            for idx, field in enumerate(param_fields):
                 export_ignore_field = field.get("export_ignore", False)
                 if export_ignore_field:
                     continue
                 cell_format = None
-                if not param_fields:
-                    # Если не заданы параметры (поля в описании шаблона)
-                    attr_value = getattr(item, field.name)
-                else:
+                try:
+                    # Делим поле на части по разделителю точке
+                    field_name = field.get('field').split('.')
+                    # Берем первую часть
+                    attr_value = getattr(item, field_name[0])
+                    # Если поле оказалось ManyToMany
                     try:
-                        # Делим поле на части по разделителю точке
-                        field_name = field.get('field').split('.')
-                        # Берем первую часть
-                        attr_value = getattr(item, field_name[0])
-                        # Если поле оказалось ManyToMany
-                        try:
-                            if item._meta.get_field(field_name[0]).many_to_many:
-                                # То берем следующий индекс как название колонки
-                                # Если он есть
-                                if len(field_name) > 1:
-                                    column_name = field_name[1]
-                                    attr_value = attr_value.values_list(column_name, flat=True)
-                                    attr_value = '|'.join(attr_value)
-                                else:
-                                    attr_value = None
+                        if item._meta.get_field(field_name[0]).many_to_many:
+                            # То берем следующий индекс как название колонки
+                            # Если он есть
+                            if len(field_name) > 1:
+                                column_name = field_name[1]
+                                attr_value = attr_value.values_list(column_name, flat=True)
+                                attr_value = '|'.join(attr_value)
                             else:
-                                # Для всех оставшихся частей, получаем значение атрибутов циклом
-                                for x in range(1, len(field_name)):
-                                    # Проверяем тип поля, не является ли оно ManyToMany
-                                    if not attr_value._meta.get_field(field_name[x]).many_to_many:
-                                        # Если поле "нормальное", то просто проходим по циклу далее
-                                        attr_value = getattr(attr_value, field_name[x])
+                                attr_value = None
+                        else:
+                            # Для всех оставшихся частей, получаем значение атрибутов циклом
+                            for x in range(1, len(field_name)):
+                                # Проверяем тип поля, не является ли оно ManyToMany
+                                if not attr_value._meta.get_field(field_name[x]).many_to_many:
+                                    # Если поле "нормальное", то просто проходим по циклу далее
+                                    attr_value = getattr(attr_value, field_name[x])
+                                else:
+                                    # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
+                                    # Если он есть
+                                    if x + 1 < len(field_name):
+                                        column_name = field_name[x + 1]
+                                        attr_value = attr_value.values_list(column_name, flat=True)
+                                        attr_value = '|'.join(attr_value)
+                                    # Иначе возвращаем None, т.к. там в любом случае будет None
                                     else:
-                                        # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
-                                        # Если он есть
-                                        if x + 1 < len(field_name):
-                                            column_name = field_name[x + 1]
-                                            attr_value = attr_value.values_list(column_name, flat=True)
-                                            attr_value = '|'.join(attr_value)
-                                        # Иначе возвращаем None, т.к. там в любом случае будет None
-                                        else:
-                                            attr_value = None
-                        except FieldDoesNotExist:
-                            pass
-                    except AttributeError:
-                        attr_value = None
+                                        attr_value = None
+                    except FieldDoesNotExist:
+                        pass
+                except AttributeError:
+                    attr_value = None
 
                 if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
                 if isinstance(attr_value, date):
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         cell_format = xlwt.XFStyle()
                         cell_format.set_num_format = field.get('format', 'DD.MM.YYYY')
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         attr_value = attr_value.strftime(field.get('format'))
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float):
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         cell_format = xlwt.XFStyle()
                         cell_format.num_format_str = field.get('format')
                 if not cell_format:
@@ -352,14 +348,11 @@ class ExportTemplate(models.Model):
 
         # Заполнение заголовков
         header = []
-        for field in fields:
-            if not param_fields:
-                header.append(field.verbose_name)
-            else:
-                export_ignore_field = field.get("export_ignore", False)
-                if export_ignore_field:
-                    continue
-                header.append(field.get("name"))
+        for field in param_fields:
+            export_ignore_field = field.get("export_ignore", False)
+            if export_ignore_field:
+                continue
+            header.append(field.get("name"))
 
         writer.writerow(header)
 
@@ -369,59 +362,55 @@ class ExportTemplate(models.Model):
         # Iterate over the data and write it out row by row.
         data = []
         for item in queryset.iterator():
-            for field in fields:
+            for field in param_fields:
                 export_ignore_field = field.get("export_ignore", False)
                 if export_ignore_field:
                     continue
-                if not param_fields:
-                    # Если не заданы параметры (поля в описании шаблона)
-                    attr_value = getattr(item, field.name)
-                else:
+                try:
+                    # Делим поле на части по разделителю точке
+                    field_name = field.get('field').split('.')
+                    # Берем первую часть
+                    attr_value = getattr(item, field_name[0])
+                    # Если поле оказалось ManyToMany
                     try:
-                        # Делим поле на части по разделителю точке
-                        field_name = field.get('field').split('.')
-                        # Берем первую часть
-                        attr_value = getattr(item, field_name[0])
-                        # Если поле оказалось ManyToMany
-                        try:
-                            if item._meta.get_field(field_name[0]).many_to_many:
-                                # То берем следующий индекс как название колонки
-                                # Если он есть
-                                if len(field_name) > 1:
-                                    column_name = field_name[1]
-                                    attr_value = attr_value.values_list(column_name, flat=True)
-                                    attr_value = '|'.join(attr_value)
-                                else:
-                                    attr_value = None
+                        if item._meta.get_field(field_name[0]).many_to_many:
+                            # То берем следующий индекс как название колонки
+                            # Если он есть
+                            if len(field_name) > 1:
+                                column_name = field_name[1]
+                                attr_value = attr_value.values_list(column_name, flat=True)
+                                attr_value = '|'.join(attr_value)
                             else:
-                                # Для всех оставшихся частей, получаем значение атрибутов циклом
-                                for x in range(1, len(field_name)):
-                                    # Проверяем тип поля, не является ли оно ManyToMany
-                                    if not attr_value._meta.get_field(field_name[x]).many_to_many:
-                                        # Если поле "нормальное", то просто проходим по циклу далее
-                                        attr_value = getattr(attr_value, field_name[x])
+                                attr_value = None
+                        else:
+                            # Для всех оставшихся частей, получаем значение атрибутов циклом
+                            for x in range(1, len(field_name)):
+                                # Проверяем тип поля, не является ли оно ManyToMany
+                                if not attr_value._meta.get_field(field_name[x]).many_to_many:
+                                    # Если поле "нормальное", то просто проходим по циклу далее
+                                    attr_value = getattr(attr_value, field_name[x])
+                                else:
+                                    # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
+                                    # Если он есть
+                                    if x + 1 < len(field_name):
+                                        column_name = field_name[x + 1]
+                                        attr_value = attr_value.values_list(column_name, flat=True)
+                                        attr_value = '|'.join(attr_value)
+                                    # Иначе возвращаем None, т.к. там в любом случае будет None
                                     else:
-                                        # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
-                                        # Если он есть
-                                        if x + 1 < len(field_name):
-                                            column_name = field_name[x + 1]
-                                            attr_value = attr_value.values_list(column_name, flat=True)
-                                            attr_value = '|'.join(attr_value)
-                                        # Иначе возвращаем None, т.к. там в любом случае будет None
-                                        else:
-                                            attr_value = None
-                        except FieldDoesNotExist:
-                            pass
-                    except AttributeError:
-                        attr_value = None
+                                        attr_value = None
+                    except FieldDoesNotExist:
+                        pass
+                except AttributeError:
+                    attr_value = None
                 if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
                 if isinstance(attr_value, date):
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         attr_value = date.strftime(attr_value, field.get('format', 'DD.MM.YYYY'))
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
-                    if param_fields and field.get('format'):
+                    if field.get('format'):
                         attr_value = attr_value.strftime(field.get('format'))
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
