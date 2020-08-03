@@ -2,6 +2,7 @@ import datetime
 import xlrd
 import re
 
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
 from django.db.models import Q
@@ -52,7 +53,7 @@ class XLSParser:
         attr_value = model.objects.filter(**attr_query_dict).first()
         return attr_value
 
-    def get_attr_value_ext(self, model, row_data):
+    def get_attr_value_ext(self, model, row_data, type_model=None):
         # Делим поле по разделителю
         splitted_fields = row_data.split('.')
         splitted_length = len(splitted_fields)
@@ -64,6 +65,7 @@ class XLSParser:
         many_to_many_values = list()
         m2m_flag = False
         json_values = dict()
+        fk_field = None
 
         while True:
             if not current_idx < splitted_length:
@@ -72,12 +74,19 @@ class XLSParser:
             current_field = splitted_fields[current_idx]
             field = model._meta.get_field(current_field)
             # Если поле - связь к другой модели
-            if field.is_relation and field.related_model:
+            if field.is_relation:
+                model = None
+                if field.related_model:
+                    # Обновляем модель
+                    model = field.related_model
+                elif type_model:
+                    model = type_model
+                    fk_field = field.fk_field
+                    type_model = None
                 if field.many_to_many:
                     m2m_flag = True
-                # Обновляем модель
-                model = field.related_model
-                processed_model_list.append(model)
+                if model:
+                    processed_model_list.append(model)
             elif isinstance(field, JSONField):
                 json_key = splitted_fields[current_idx+1]
                 attr_value = self.item_data['.'.join(splitted_fields)]
@@ -145,17 +154,17 @@ class XLSParser:
 
         result_dict = dict()
         m2m_dict = dict()
-        field_name = splitted_fields[0]
-        if splitted_length > 1:
-            if many_to_many_values:
-                m2m_dict = {field_name: many_to_many_values}
-            elif field_name not in json_values:
-                result_dict = {field_name: current_value}
-        else:
-            if many_to_many_values:
-                m2m_dict = {field_name: many_to_many_values}
-            elif field_name not in json_values:
-                result_dict = {field_name: attr_value}
+        field_name = fk_field or splitted_fields[0]
+        if many_to_many_values:
+            m2m_dict = {field_name: many_to_many_values}
+        elif field_name not in json_values:
+            if splitted_length > 1:
+                value = current_value
+            else:
+                value = attr_value
+            if fk_field:
+                value = value.id
+            result_dict = {field_name: value}
 
         return result_dict, m2m_dict, json_values
 
@@ -178,6 +187,16 @@ class XLSParser:
             if param_field.get('import_ignore', True):
                 ignore_fields_list.add(param_field['field'])
 
+        # Список параметризированных полей
+        field_names = {field.name: field for field in fields}
+        parameterized_fields = dict()
+        for param_field in param_fields:
+            # if param_field.get("type_field", None) and model._meta.get_field(param_field["type_field"]):
+            #     parameterized_fields[param_field["field"]] = param_field["type_field"]
+            base_name = param_field["field"].split(".")[0]
+            if base_name in field_names and isinstance(field_names[base_name], GenericForeignKey):
+                parameterized_fields[param_field["field"]] = field_names[base_name].ct_field
+
         # Для update_or_create
         result_query = dict()
 
@@ -197,15 +216,22 @@ class XLSParser:
         for row_data in self.item_data:
             if row_data in ignore_fields_list:
                 continue
+            type_model = None
+            if row_data in parameterized_fields:
+                type_field = defaults.get(parameterized_fields[row_data])
+                if not type_field:
+                    type_field = query_dict.get(parameterized_fields[row_data])
+                if type_field:
+                    type_model = type_field.model_class()
             # Если поле ключевое
             if row_data in key_fields_list:
                 cache_set.append(self.item_data[row_data])
-                query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data)
+                query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data, type_model)
                 query.update(query_dict)
                 m2m.update(m2m_dict)
             else:
                 # Если поле не ключевое
-                query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data)
+                query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data, type_model)
                 defaults.update(query_dict)
                 m2m.update(m2m_dict)
                 dict_merge(json_fields_to_update, json_dict)
