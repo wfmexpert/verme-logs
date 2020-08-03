@@ -187,15 +187,19 @@ class XLSParser:
             if param_field.get('import_ignore', True):
                 ignore_fields_list.add(param_field['field'])
 
-        # Список параметризированных полей
+        # Список параметризированных полей и проверка GenericFields
         field_names = {field.name: field for field in fields}
+        base_field_names = [param_field["field"].split(".")[0] for param_field in param_fields]
+        generic_fk_fields = {field.fk_field: field for field in fields if isinstance(field, GenericForeignKey)}
         parameterized_fields = dict()
         for param_field in param_fields:
-            # if param_field.get("type_field", None) and model._meta.get_field(param_field["type_field"]):
-            #     parameterized_fields[param_field["field"]] = param_field["type_field"]
             base_name = param_field["field"].split(".")[0]
             if base_name in field_names and isinstance(field_names[base_name], GenericForeignKey):
                 parameterized_fields[param_field["field"]] = field_names[base_name].ct_field
+                if parameterized_fields[param_field["field"]] not in base_field_names:
+                    raise Exception(f"Не обнаружен тип поля {param_field['field']} в параметрах")
+            if base_name in generic_fk_fields and generic_fk_fields[base_name].ct_field not in base_field_names:
+                raise Exception(f"Не обнаружен тип поля {param_field['field']} в параметрах")
 
         # Для update_or_create
         result_query = dict()
@@ -220,7 +224,7 @@ class XLSParser:
             if row_data in parameterized_fields:
                 type_field = defaults.get(parameterized_fields[row_data])
                 if not type_field:
-                    type_field = query_dict.get(parameterized_fields[row_data])
+                    type_field = query.get(parameterized_fields[row_data])
                 if type_field:
                     type_model = type_field.model_class()
             # Если поле ключевое
