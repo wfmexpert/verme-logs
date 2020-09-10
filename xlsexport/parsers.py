@@ -298,7 +298,7 @@ class XLSParser:
 
         def get_formatted_field(value, format):
             if format.find(".0") != -1:
-                return get_float(value)
+                return get_float(value, len(format.split(".")[-1].strip()))
             elif format.find("#") != -1:
                 return get_int(value)
             elif format == "@":
@@ -312,9 +312,9 @@ class XLSParser:
             except TypeError:
                 pass
 
-        def get_float(value):
+        def get_float(value, prec=2):
             try:
-                return float(value)
+                return round(float(value), prec)
             except (TypeError, ValueError):
                 pass
 
