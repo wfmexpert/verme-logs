@@ -1,11 +1,12 @@
 import json
+
 from django import forms
-from django.contrib.postgres.forms.jsonb import InvalidJSONInput, JSONField
+from django.forms.fields import InvalidJSONInput
 
 from .models import ServerRecord
 
 
-class JSONFormattedField(JSONField):
+class JSONFormattedField(forms.JSONField):
     def prepare_value(self, value):
         if isinstance(value, InvalidJSONInput):
             return value
