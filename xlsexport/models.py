@@ -1,8 +1,5 @@
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import FieldDoesNotExist
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.contrib import messages
-from django.utils.safestring import mark_safe
 
 from django.db import models
 from django.apps import apps
@@ -30,8 +27,8 @@ class ExportTemplate(models.Model):
     format = models.CharField(verbose_name='формат', max_length=5, choices=EXPORT_FORMAT_CHOICES,
                               default=EXPORT_FORMAT_CHOICES[0][0], blank=False, null=False)
     model = models.CharField(verbose_name='модель', max_length=64, blank=True, null=True)
-    queryset = JSONField(verbose_name='queryset', default=None, null=True, blank=True)
-    params = JSONField(verbose_name='параметры', default=None, null=True, blank=True)
+    queryset = models.JSONField(verbose_name='queryset', default=None, null=True, blank=True)
+    params = models.JSONField(verbose_name='параметры', default=None, null=True, blank=True)
     default = models.BooleanField(verbose_name='по умолчанию', default=False)
 
     def __str__(self):
