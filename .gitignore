@@ -108,6 +108,7 @@ venv.bak/
 
 # utility files for making migrations for a reusable app
 manage.py
+make_migrations.py
 requirements.in
 requirements.txt
 test_settings.py
