@@ -199,8 +199,7 @@ class ExportTemplate(models.Model):
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if field.get('format'):
-                        cell_format = workbook.add_format()
-                        cell_format.set_num_format(field.get('format', 'DD.MM.YYYY'))
+                        attr_value = attr_value.strftime(field.get('format'))
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if field.get('format'):
@@ -305,8 +304,8 @@ class ExportTemplate(models.Model):
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if field.get('format'):
-                        cell_format = xlwt.XFStyle()
-                        cell_format.set_num_format = field.get('format', 'DD.MM.YYYY')
+                        if field.get('format'):
+                            attr_value = attr_value.strftime(field.get('format'))
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if field.get('format'):
