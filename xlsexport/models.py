@@ -1,8 +1,5 @@
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import FieldDoesNotExist
-from django.http import JsonResponse, HttpResponseBadRequest
-from django.contrib import messages
-from django.utils.safestring import mark_safe
 
 from django.db import models
 from django.apps import apps
@@ -199,7 +196,11 @@ class ExportTemplate(models.Model):
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if field.get('format'):
-                        attr_value = attr_value.strftime(field.get('format'))
+                        if field.get('format').startswith("%"):
+                            attr_value = attr_value.strftime(field.get('format'))
+                        else:
+                            cell_format = workbook.add_format()
+                            cell_format.set_num_format(field.get('format', 'DD.MM.YYYY'))
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if field.get('format'):
@@ -304,8 +305,11 @@ class ExportTemplate(models.Model):
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if field.get('format'):
-                        if field.get('format'):
+                        if field.get('format').startswith("%"):
                             attr_value = attr_value.strftime(field.get('format'))
+                        else:
+                            cell_format = xlwt.XFStyle()
+                            cell_format.num_format_str = field.get('format', 'DD.MM.YYYY')
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if field.get('format'):
@@ -406,11 +410,17 @@ class ExportTemplate(models.Model):
                     attr_value = ''
                 if isinstance(attr_value, date):
                     if field.get('format'):
-                        attr_value = date.strftime(attr_value, field.get('format', 'DD.MM.YYYY'))
+                        if field.get('format').startswith("%"):
+                            attr_value = attr_value.strftime(field.get('format'))
+                        else:
+                            attr_value = str(attr_value)
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
                     if field.get('format'):
-                        attr_value = attr_value.strftime(field.get('format'))
+                        if field.get('format').startswith("%"):
+                            attr_value = attr_value.strftime(field.get('format'))
+                        else:
+                            attr_value = str(attr_value)
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
                 data.append(attr_value)
