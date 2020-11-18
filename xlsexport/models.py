@@ -194,23 +194,24 @@ class ExportTemplate(models.Model):
                     attr_value = None
                 if attr_value is None:  # Output False explicitly
                     attr_value = ''
+                attr_format = field.get("format", "").strip()
                 if isinstance(attr_value, date):
-                    if field.get('format'):
-                        if field.get('format').startswith("%"):
-                            attr_value = attr_value.strftime(field.get('format'))
+                    if attr_format:
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
                         else:
                             cell_format = workbook.add_format()
-                            cell_format.set_num_format(field.get('format', 'DD.MM.YYYY'))
+                            cell_format.set_num_format(attr_format)
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
-                    if field.get('format'):
-                        attr_value = attr_value.strftime(field.get('format'))
+                    if attr_format:
+                        attr_value = attr_value.strftime(attr_format)
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float) or isinstance(attr_value, int):
-                    if field.get('format'):
+                    if attr_format:
                         cell_format = workbook.add_format()
-                        cell_format.set_num_format(field.get('format'))
+                        cell_format.set_num_format(attr_format)
                 if not cell_format:
                     worksheet.write(row, idx, str(attr_value))
                 else:
@@ -303,23 +304,24 @@ class ExportTemplate(models.Model):
 
                 if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
+                attr_format = field.get("format", "").strip()
                 if isinstance(attr_value, date):
-                    if field.get('format'):
-                        if field.get('format').startswith("%"):
-                            attr_value = attr_value.strftime(field.get('format'))
+                    if attr_format:
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
                         else:
                             cell_format = xlwt.XFStyle()
-                            cell_format.num_format_str = field.get('format', 'DD.MM.YYYY')
+                            cell_format.num_format_str = attr_format
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
-                    if field.get('format'):
-                        attr_value = attr_value.strftime(field.get('format'))
+                    if attr_format:
+                        attr_value = attr_value.strftime(attr_format)
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float):
-                    if field.get('format'):
+                    if attr_format:
                         cell_format = xlwt.XFStyle()
-                        cell_format.num_format_str = field.get('format')
+                        cell_format.num_format_str = attr_format
                 if not cell_format:
                     worksheet.write(row, idx, str(attr_value))
                 else:
@@ -408,17 +410,18 @@ class ExportTemplate(models.Model):
                     attr_value = None
                 if not attr_value and attr_value is not False:  # Output False explicitly
                     attr_value = ''
+                attr_format = field.get("format", "").strip()
                 if isinstance(attr_value, date):
-                    if field.get('format'):
-                        if field.get('format').startswith("%"):
-                            attr_value = attr_value.strftime(field.get('format'))
+                    if attr_format:
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
                         else:
                             attr_value = str(attr_value)
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone()
-                    if field.get('format'):
-                        if field.get('format').startswith("%"):
-                            attr_value = attr_value.strftime(field.get('format'))
+                    if attr_format:
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
                         else:
                             attr_value = str(attr_value)
                 if isinstance(attr_value, timedelta):
