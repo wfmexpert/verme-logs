@@ -38,7 +38,7 @@ class ClientRecordAdmin(admin.ModelAdmin):
     readonly_fields = (
         "created_at",
         "user_agent",
-        "html_message",
+        "message",
         "username",
         "headers",
     )
