@@ -14,6 +14,7 @@ class DBLogsHandler(Handler):
         params = getattr(record, 'params', None)
         source = getattr(record, 'source', None)
         method = getattr(record, 'method', None)
+        request = getattr(record, 'request', None)
         duration = getattr(record, 'duration', 0.0)
         headquater = getattr(record, 'headquater', None)
         tags = getattr(record, 'tags', '')
@@ -27,6 +28,8 @@ class DBLogsHandler(Handler):
                 duration = params.get('duration', 0.0)
             if not headquater:
                 headquater = params.get('username', '--')
+            if not request:
+                request = params.get('request', '')
 
         ServerRecord.objects.create(level=record.levelname,
                                     message=msg,
@@ -35,7 +38,8 @@ class DBLogsHandler(Handler):
                                     source=source,
                                     method=method,
                                     duration=duration,
-                                    tags=tags
+                                    tags=tags,
+                                    request=request,
                                     )
 
         # Тут используется параллельное подключение к базе.
