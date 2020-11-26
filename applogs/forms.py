@@ -24,6 +24,7 @@ class ServerRecordForm(forms.ModelForm):
             'duration',
             'tags',
             'message',
+            'request',
             'params',
         ]
 
