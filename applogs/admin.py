@@ -4,6 +4,7 @@ Copyright 2019 ООО «Верме»
 Настройки представления моделей приложения applogs в админинстративном разделе
 """
 from datetime import timedelta
+import json
 
 import xlwt
 from django.contrib import admin
@@ -33,7 +34,7 @@ def delete_all_client_records_view(request):
 
 @admin.register(ClientRecord)
 class ClientRecordAdmin(admin.ModelAdmin):
-    list_display = ("created_at", "user_agent", "html_message", "username", "headers")
+    list_display = ("created_at", "username", "user_agent", "html_message", "html_headers")
     search_fields = ("message", "username")
     readonly_fields = (
         "created_at",
@@ -46,8 +47,19 @@ class ClientRecordAdmin(admin.ModelAdmin):
     def html_message(self, obj):
         return format_html("<pre>{}</pre>", obj.message[:200])
 
+    def html_headers(self, obj):
+        if obj.headers:
+            headers = json.loads(obj.headers)
+            return format_html("<pre>{}</pre>", json.dumps(headers, indent=2))
+        return ""
+
     def has_add_permission(self, request):
         return False
+
+    class Media:
+        css = {
+            "all": ("admin/applogs/clientrecord/admin_column_width.css",)
+        }
 
 
 @staff_member_required
@@ -203,3 +215,8 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         return obj.created_at.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
 
     created_at_str.short_description = "дата создания"
+
+    class Media:
+        css = {
+            "all": ("admin/applogs/clientrecord/admin_column_width.css",)
+        }

@@ -1,0 +1,8 @@
+.field-html_message {
+    max-width: 500px !important;
+    overflow: hidden;
+}
+.field-html_headers {
+    max-width: 500px !important;
+    overflow: hidden;
+}
