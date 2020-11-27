@@ -1,6 +1,7 @@
 include LICENSE
 include README.rst
 recursive-include applogs/templates *
+recursive-include applogs/static *
 recursive-include xlsexport/templates *
 recursive-include wfm_admin/templates *
 recursive-include saml/templates *
