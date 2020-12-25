@@ -164,7 +164,6 @@ class CountEstimatePaginator(Paginator):
             self.object_list, "count_estimate"
         ):
             return self.object_list.count_estimate()
-
         return self.object_list.count()
 
     count = property(_get_count)

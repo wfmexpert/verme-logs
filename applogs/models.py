@@ -47,6 +47,26 @@ class CountEstimateQuerySet(QuerySet):
         sql_inner_formatted = sql % sql_params_escaped
 
         with connections[self.db].cursor() as cursor:
+            cursor.execute("select exists(select * from pg_proc where proname = 'count_estimate');")
+            exists = cursor.fetchone()[0]
+            if not exists:
+                cursor.execute("""
+                    CREATE FUNCTION count_estimate(query text) RETURNS integer AS
+                    $func$
+                    DECLARE
+                        rec   record;
+                        rows  integer;
+                    BEGIN
+                        FOR rec IN EXECUTE 'EXPLAIN ' || query LOOP
+                            rows := substring(rec."QUERY PLAN" FROM ' rows=([[:digit:]]+)');
+                            EXIT WHEN rows IS NOT NULL;
+                        END LOOP;
+                    
+                        RETURN rows;
+                    END
+                    $func$ LANGUAGE plpgsql;
+                """)
+
             cursor.execute(f"SELECT count_estimate( ' {sql_inner_formatted} ' );")
             fetched_result = cursor.fetchone()
             count_estimate = fetched_result[0] if fetched_result else None
