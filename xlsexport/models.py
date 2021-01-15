@@ -9,6 +9,7 @@ from datetime import datetime, date, timedelta
 import xlsxwriter, xlwt
 import csv
 import io
+import json
 import string
 
 from .parsers import XLSParser
@@ -170,7 +171,10 @@ class ExportTemplate(models.Model):
                             else:
                                 attr_value = None
                         elif isinstance(item._meta.get_field(field_name[0]), JSONField):
-                            attr_value = getattr(item, field_name[0]).get(field_name[1])
+                            if len(field_name) > 1:
+                                attr_value = getattr(item, field_name[0]).get(field_name[1])
+                            else:
+                                attr_value = json.dumps(getattr(item, field_name[0]), ensure_ascii=False)
                         else:
                             # Для всех оставшихся частей, получаем значение атрибутов циклом
                             for x in range(1, len(field_name)):
