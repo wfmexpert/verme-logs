@@ -33,7 +33,7 @@ class ServerRecordForm(forms.ModelForm):
         }
         widgets = {
             'message': forms.Textarea(attrs={'rows': 10, 'cols': 60, }),
-            'request': forms.Textarea(attrs={'rows': 30, 'cols': 120, }),
+            'request': forms.Textarea(attrs={'rows': 45, 'cols': 120, }),
             'params': forms.Textarea(
                 attrs={'class': 'acefyelable-textarea', 'data-mode': 'json'}),
         }
