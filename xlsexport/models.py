@@ -1,4 +1,3 @@
-from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import FieldDoesNotExist
 
 from django.db import models
@@ -14,6 +13,12 @@ import string
 
 from .parsers import XLSParser
 
+try:
+    from django.db.models import JSONField
+except ImportError:
+    from django.contrib.postgres.fields import JSONField
+
+    
 # Форматы экспорта
 EXPORT_FORMAT_CHOICES = (
     ("xlsx", "XLSX"),
