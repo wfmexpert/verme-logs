@@ -4,11 +4,16 @@ Copyright 2019 ООО «Верме»
 Модели приложения applogs
 """
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.fields import JSONField
 from django.db import connections, models
 from django.db.models import Manager
 from django.db.models.query import QuerySet
 
+try:
+    from django.db.models import JSONField
+except ImportError:
+    from django.contrib.postgres.fields import JSONField
+
+    
 # Уровни важности
 LEVEL_CHOICES = (
     ("INFO", "INFO"),
