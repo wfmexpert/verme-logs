@@ -13,7 +13,6 @@ try:
 except ImportError:
     from django.contrib.postgres.fields import JSONField
 
-    
 # Уровни важности
 LEVEL_CHOICES = (
     ("INFO", "INFO"),
@@ -26,9 +25,12 @@ LEVEL_CHOICES = (
 class ClientRecord(models.Model):
     message = models.TextField(verbose_name="сообщение")
     user_agent = models.CharField(verbose_name="UserAgent", max_length=512)
-    created_at = models.DateTimeField(verbose_name="дата создания", auto_now_add=True)
-    username = models.CharField(verbose_name="Пользователь", max_length=512, null=True, blank=True,)
-    headers = JSONField(verbose_name="Заголовок запроса", default=None, null=True, blank=True)
+    created_at = models.DateTimeField(
+        verbose_name="дата создания", auto_now_add=True)
+    username = models.CharField(
+        verbose_name="Пользователь", max_length=512, null=True, blank=True,)
+    headers = JSONField(
+        verbose_name="Заголовок запроса", default=None, null=True, blank=True)
 
     class Meta:
         verbose_name = "Системная ошибка"
@@ -41,38 +43,40 @@ class CountEstimateQuerySet(QuerySet):
         Выводим примерное значение для количества если не применены фильтры
         Предполагается использование Postgres
         """
-        from django.db import connections
-
         # оборачиваем сырой запрос в кастомную функцию Postgres
         # Получаем запрос и параметры
         sql, sql_params = self.query.get_compiler(using=self.db).as_sql()
-        # Так как в результате у нас будут вложенные одиночные кавычки, эскейпим параметры в формате PostgreSQL
+        # Так как в результате у нас будут вложенные одиночные кавычки,
+        #  эскейпим параметры в формате PostgreSQL
         sql_params_escaped = tuple(f"''{param}''" for param in sql_params)
         # as_sql() вернул sql, отформатированный через "%", форматируем
         sql_inner_formatted = sql % sql_params_escaped
 
         with connections[self.db].cursor() as cursor:
-            cursor.execute("select exists(select * from pg_proc where proname = 'count_estimate');")
+            cursor.execute("""
+                select exists(
+                    select * from pg_proc where proname = 'count_estimate');
+                """)
             exists = cursor.fetchone()[0]
             if not exists:
                 cursor.execute("""
-                    CREATE FUNCTION count_estimate(query text) RETURNS integer AS
+                    CREATE FUNCTION count_estimate(query text)
+                    RETURNS integer AS
                     $func$
                     DECLARE
                         rec   record;
                         rows  integer;
                     BEGIN
                         FOR rec IN EXECUTE 'EXPLAIN ' || query LOOP
-                            rows := substring(rec."QUERY PLAN" FROM ' rows=([[:digit:]]+)');
+                            rows := substring(
+                                rec."QUERY PLAN" FROM ' rows=([[:digit:]]+)');
                             EXIT WHEN rows IS NOT NULL;
                         END LOOP;
-                    
                         RETURN rows;
                     END
                     $func$ LANGUAGE plpgsql;
                 """)
-
-            cursor.execute(f"SELECT count_estimate( ' {sql_inner_formatted} ' );")
+            cursor.execute(f"SELECT count_estimate('{sql_inner_formatted}');")
             fetched_result = cursor.fetchone()
             count_estimate = fetched_result[0] if fetched_result else None
 
@@ -83,16 +87,30 @@ class CountEstimateQuerySet(QuerySet):
 
 
 class ServerRecord(models.Model):
-    headquater = models.CharField(verbose_name="клиент", max_length=255, blank=True, null=True, db_index=True)
-    level = models.CharField(verbose_name="важность", max_length=8, choices=LEVEL_CHOICES, default=LEVEL_CHOICES[0][0], blank=False, null=False, db_index=True,)
-    source = models.CharField(verbose_name="источник", max_length=32, blank=True, null=True, db_index=True)
-    method = models.CharField(verbose_name="метод", max_length=64, blank=True, null=True, db_index=True)
+    headquater = models.CharField(verbose_name="клиент", max_length=255,
+                                  blank=True, null=True, db_index=True)
+    level = models.CharField(verbose_name="важность", max_length=8,
+                             choices=LEVEL_CHOICES,
+                             default=LEVEL_CHOICES[0][0], blank=False,
+                             null=False, db_index=True)
+    source = models.CharField(verbose_name="источник", max_length=32,
+                              blank=True, null=True, db_index=True)
+    method = models.CharField(verbose_name="метод", max_length=64, blank=True,
+                              null=True, db_index=True)
     duration = models.FloatField(verbose_name="продолжительность", default=0.0)
-    tags = models.CharField(verbose_name="теги", max_length=512, blank=True, null=True)
+    start_time_method = models.DateTimeField(
+        verbose_name="Время запуска службы", null=True)
+    duration_time_method = models.FloatField(
+        verbose_name="Время работы слыжбы", null=True)
+    tags = models.CharField(
+        verbose_name="теги", max_length=512, blank=True, null=True)
     message = models.TextField(verbose_name="сообщение")
-    params = JSONField(verbose_name="доп. информация", default=None, null=True, blank=True)
-    created_at = models.DateTimeField(verbose_name="дата создания", auto_now_add=True)
-    request = models.TextField(verbose_name="текст запроса", blank=True, null=True)
+    params = JSONField(verbose_name="доп. информация", default=None, null=True,
+                       blank=True)
+    created_at = models.DateTimeField(verbose_name="дата создания",
+                                      auto_now_add=True)
+    request = models.TextField(verbose_name="текст запроса", blank=True,
+                               null=True)
 
     objects = CountEstimateQuerySet.as_manager()
 
