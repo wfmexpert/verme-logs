@@ -303,6 +303,8 @@ class XLSParser:
                 return get_int(value)
             elif format == "@":
                 return str(value)
+            elif format.startswith("%"):
+                return datetime.datetime.strptime(value, format)
             else:
                 return get_cell_date(value)
 
