@@ -304,7 +304,11 @@ class XLSParser:
             elif format == "@":
                 return str(value)
             elif format.startswith("%"):
-                return datetime.datetime.strptime(value, format)
+                try:
+                    formatted_value = datetime.datetime.strptime(value, format)
+                except TypeError:
+                    formatted_value = get_cell_date(value)
+                return formatted_value
             else:
                 return get_cell_date(value)
 
