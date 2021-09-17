@@ -155,7 +155,7 @@ class ExportTemplate(models.Model):
                 attr_value = getattr(item, field_name[0]).get(field_name[1])
             else:
                 attr_value = json.dumps(getattr(item, field_name[0]), ensure_ascii=False)
-        else:
+        elif attr_value:
             # Для всех оставшихся частей, получаем значение атрибутов циклом
             for x in range(1, len(field_name)):
                 # Проверяем тип поля, не является ли оно ManyToMany
