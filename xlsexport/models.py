@@ -118,6 +118,13 @@ class ExportTemplate(models.Model):
                 field_name.pop()
             for f in self.get_model_fields():
                 if field_name[0] == f.name and f.is_relation and f.related_model is not None and not f.many_to_many:
+                    if len(field_name) > 1:
+                        try:
+                            related_field = f.related_model._meta.get_field(field_name[1])
+                        except BaseException:
+                            related_field = None
+                        if isinstance(related_field, JSONField):
+                            field_name.pop()
                     fields_qs.append("__".join(field_name))
         if fields_qs:
             queryset = queryset.select_related(*fields_qs)
@@ -131,54 +138,40 @@ class ExportTemplate(models.Model):
         # TODO
         pass
 
-    def get_attr_value(self, item, field):
+    def get_attr_value(self, obj, field):
         # Делим поле на части по разделителю точке
-        field_name = field.get("field").split(".")
-        # Берем первую часть
-        attr_value = getattr(item, field_name[0])
-        # Если поле оказалось ManyToMany
-        try:
-            item_field = item._meta.get_field(field_name[0])
-        except FieldDoesNotExist:
-            item_field = None
-        if item_field and item_field.many_to_many:
-            # То берем следующий индекс как название колонки
-            # Если он есть
-            if len(field_name) > 1:
-                column_name = field_name[1]
-                attr_value = attr_value.values_list(column_name, flat=True)
-                attr_value = "|".join(attr_value)
-            else:
-                attr_value = None
-        elif isinstance(item_field, JSONField):
-            if len(field_name) > 1:
-                attr_value = getattr(item, field_name[0]).get(field_name[1])
-            else:
-                attr_value = json.dumps(getattr(item, field_name[0]), ensure_ascii=False)
-        elif attr_value:
-            # Для всех оставшихся частей, получаем значение атрибутов циклом
-            for x in range(1, len(field_name)):
-                # Проверяем тип поля, не является ли оно ManyToMany
-                try:
-                    attr_field = attr_value._meta.get_field(field_name[x])
-                except FieldDoesNotExist:
-                    attr_field = None
-                if not attr_field or not attr_field.many_to_many:
-                    # Если поле "нормальное", то просто проходим по циклу далее
-                    attr_value = getattr(attr_value, field_name[x])
+        field = field.get("field").split(".")
+        for ind, field_name in enumerate(field):
+            # Берем значение аттрибута по имени. Может быть поле, может быть значение свойства
+            value = getattr(obj, field_name, None)
+            # Пробуем найти поле модели
+            try:
+                item_field = obj._meta.get_field(field_name)
+            except BaseException:
+                item_field = None
+            if item_field and (isinstance(item_field, models.ForeignKey) or isinstance(item_field, models.OneToOneField)):
+                # Если поле - ссылка на объект, его используем как объект для получения следующих значений
+                obj = value
+            elif item_field and item_field.many_to_many:
+                # Если есть поле и оно ManyToMany - берем в качестве названия колонки следующую часть field
+                if ind < len(field) - 1:
+                    column_name = field[ind + 1]
+                    value = "|".join(value.values_list(column_name, flat=True))
                 else:
-                    # Как только наткнулись на ManyToMany, берем следующий индекс как название колонки
-                    # Если он есть
-                    if x + 1 < len(field_name):
-                        column_name = field_name[x + 1]
-                        attr_value = attr_value.values_list(column_name, flat=True)
-                        attr_value = "|".join(attr_value)
-                    # Иначе возвращаем None, т.к. там в любом случае будет None
-                    else:
-                        attr_value = None
-        if attr_value is None:  # Output False explicitly
-            attr_value = ""
-        return attr_value
+                    value = None
+                break  # Для ManyToMany допустима только одна вложенность
+            elif isinstance(item_field, JSONField):
+                # Если поле Json, берем значение по ключу, если есть следующая часть поля
+                if ind < len(field) - 1:
+                    column_name = field[ind + 1]
+                    value = (getattr(obj, field_name, {}) or {}).get(column_name)
+                else:
+                    value = json.dumps(getattr(obj, field_name), ensure_ascii=False)
+                break  # Для JSONField допустима только одна вложенность
+
+        if value is None:  # Output False explicitly
+            value = ""
+        return value
 
     def to_xlsx(self, queryset=None):
         param_fields, fields = self.get_param_fields()
