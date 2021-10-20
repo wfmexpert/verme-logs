@@ -145,7 +145,7 @@ def undo(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('xlsexport', '0005_JSONField_fix'),
+        ('xlsexport', '0004_alter_field_names'),
     ]
 
     operations = [
