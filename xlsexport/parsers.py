@@ -26,16 +26,21 @@ class XLSParser:
         self.created_items = defaultdict(list)
 
     def parse(self, template, file_contents):
-        rb = xlrd.open_workbook(file_contents=file_contents)
-        sheet = rb.sheet_by_index(0)
-        errors = []
-        for rownum in range(1, sheet.nrows):
-            row = sheet.row_values(rownum)
-            try:
-                self.item_data = self.get_struct_from_row(row, rb, template)
-                self.process_item_data(template)
-            except Exception as exc:
-                errors.append({'rownum': rownum, 'exc': exc})
+        try:
+            rb = xlrd.open_workbook(file_contents=file_contents)
+            sheet = rb.sheet_by_index(0)
+            errors = []
+            for rownum in range(1, sheet.nrows):
+                row = sheet.row_values(rownum)
+                try:
+                    self.item_data = self.get_struct_from_row(row, rb, template)
+                    self.process_item_data(template)
+                except Exception as exc:
+                    errors.append({'rownum': rownum, 'exc': f"{exc}"})
+                
+        except Exception as ex:
+            errors.append({'rownum': 0, 'exc': " Файл невозможно прочитать, возможно из-за: кодировки файла, содержимого файла, формата файла"})
+            errors.append({'rownum': 0, 'exc': " Попробуйте проверить содержимое файла на соответствие с форматом файла, если не поможет, то поменяйте кодировку файла на utf-8"})
         return errors
 
     def get_attr_value(self, model, row_data, splitted_fields):
@@ -229,10 +234,13 @@ class XLSParser:
                     type_model = type_field.model_class()
             # Если поле ключевое
             if row_data in key_fields_list:
-                cache_set.append(self.item_data[row_data])
-                query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data, type_model)
-                query.update(query_dict)
-                m2m.update(m2m_dict)
+                try:
+                    cache_set.append(self.item_data[row_data])
+                    query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data, type_model)
+                    query.update(query_dict)
+                    m2m.update(m2m_dict)
+                except Exception as ex:
+                    raise CustomException(f"Ошибка связанная с ключевыми полями")
             else:
                 # Если поле не ключевое
                 query_dict, m2m_dict, json_dict = self.get_attr_value_ext(model, row_data, type_model)
@@ -290,7 +298,7 @@ class XLSParser:
                         exec_expression(expression, target_object, m2m_value)
                     self.created_items[target_object] = self.item_data
             except Exception:
-                raise
+                raise CustomException(f"Ошибка на уровне установки значений")
         self.processed_items.add(target_object)
 
     @staticmethod
@@ -343,9 +351,16 @@ class XLSParser:
         result = dict()
         param_fields, fields = template.get_param_fields()
         for idx, item in enumerate(row):
-            param_field = param_fields[idx]
+            try:
+                param_field = param_fields[idx]
+            except:
+                raise CustomException(f"Невозможно взять настраиваемое поле под номером {idx+1}")
+
             field_path = param_field['field']
-            attr_value = clean_value(row[idx])
+            try:
+                attr_value = clean_value(row[idx])
+            except:
+                raise CustomException(f"Невозможно взять значение настраиваемоего поля под номером {idx+1}")
             value = None
             if 'format' in param_field:
                 value = get_formatted_field(attr_value, param_field['format'])
