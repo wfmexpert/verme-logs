@@ -48,6 +48,8 @@ class ImportTemplateAdmin(admin.ModelAdmin):
                                    for error in errors])
                     msg = mark_safe(msg)
                     messages.add_message(request, messages.ERROR, msg)
+                else:
+                    messages.add_message(request, messages.SUCCESS, "Импорт прошёл успешно")
                 form = ImportTemplateForm()
         else:
             form = ImportTemplateForm()
