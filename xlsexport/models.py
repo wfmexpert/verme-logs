@@ -216,10 +216,12 @@ class ExportTemplate(models.Model):
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone(get_current_timezone())
                     if attr_format:
-                        attr_value = attr_value.strftime(attr_format)
-                    else:
-                        cell_format = workbook.add_format()
-                        cell_format.set_num_format(attr_format)
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
+                        else:
+                            attr_value = attr_value.replace(tzinfo=None)
+                            cell_format = workbook.add_format()
+                            cell_format.set_num_format(attr_format)
                 if isinstance(attr_value, date):
                     if attr_format:
                         if attr_format.startswith("%"):
@@ -292,10 +294,12 @@ class ExportTemplate(models.Model):
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone(get_current_timezone())
                     if attr_format:
-                        attr_value = attr_value.strftime(attr_format)
-                    else:
-                        cell_format = workbook.add_format()
-                        cell_format.set_num_format(attr_format)
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
+                        else:
+                            attr_value = attr_value.replace(tzinfo=None)
+                            cell_format = xlwt.XFStyle()
+                            cell_format.num_format_str = attr_format
                 if isinstance(attr_value, date):
                     if attr_format:
                         if attr_format.startswith("%"):
