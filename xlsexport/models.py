@@ -254,7 +254,7 @@ class ExportTemplate(models.Model):
         response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
         return response
 
-    def to_xls(self, queryset=None):
+    def _to_xls(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
@@ -323,7 +323,10 @@ class ExportTemplate(models.Model):
 
         # Rewind the buffer.
         output.seek(0)
+        return output
 
+    def to_xls(self, queryset=None):
+        output = self._to_xls(queryset)
         # Construct a server response.
         response = HttpResponse(output.read(), content_type="application/vnd.ms-excel")
         filename = self.params.get("filename", self.code)
