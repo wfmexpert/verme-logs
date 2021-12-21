@@ -173,7 +173,7 @@ class ExportTemplate(models.Model):
             value = ""
         return value
 
-    def to_xlsx(self, queryset=None):
+    def _to_xlsx(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
@@ -245,7 +245,10 @@ class ExportTemplate(models.Model):
 
         # Rewind the buffer.
         output.seek(0)
+        return output
 
+    def to_xlsx(self, queryset=None):
+        output = self._to_xlsx(queryset)
         # Construct a server response.
         response = HttpResponse(
             output.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
