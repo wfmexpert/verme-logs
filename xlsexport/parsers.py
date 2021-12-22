@@ -186,13 +186,14 @@ class XLSParser:
         for param_field in param_fields:
             if param_field.get('import_ignore', True):
                 ignore_fields_list.add(param_field['field'])
-
         # Список параметризированных полей и проверка GenericFields
         field_names = {field.name: field for field in fields}
         base_field_names = [param_field["field"].split(".")[0] for param_field in param_fields]
         generic_fk_fields = {field.fk_field: field for field in fields if isinstance(field, GenericForeignKey)}
         parameterized_fields = dict()
         for param_field in param_fields:
+            if param_field["field"] in ignore_fields_list:
+                continue
             base_name = param_field["field"].split(".")[0]
             if base_name in field_names and isinstance(field_names[base_name], GenericForeignKey):
                 parameterized_fields[param_field["field"]] = field_names[base_name].ct_field
@@ -345,14 +346,16 @@ class XLSParser:
         for idx, item in enumerate(row):
             param_field = param_fields[idx]
             field_path = param_field['field']
-            model_field = template.get_model()._meta.get_field(field_path)
+            model_field = None
+            if field_path.count('.') == 0:
+                model_field = template.get_model()._meta.get_field(field_path)
             attr_value = clean_value(row[idx])
             value = None
             if 'format' in param_field:
                 value = get_formatted_field(attr_value, param_field['format'])
                 if not value and attr_value:
                     value = attr_value
-            elif field_path.count('.') == 0 and hasattr(model_field, "get_internal_type") and model_field.get_internal_type() == 'DurationField':
+            elif model_field and hasattr(model_field, "get_internal_type") and model_field.get_internal_type() == 'DurationField':
                 # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
                 value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
             elif attr_value:
