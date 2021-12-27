@@ -60,6 +60,16 @@ class ExportTemplate(models.Model):
             return self.to_csv(queryset)
         return None
 
+    def _to_export(self, queryset=None):
+        """Возвращает BytesIO вместо HttpResponse"""
+        if self.format == "xlsx":
+            return self._to_xlsx(queryset)
+        elif self.format == "xls":
+            return self._to_xls(queryset)
+        elif self.format == "csv":
+            return self._to_csv(queryset)
+        return None
+
     def get_model(self):
         model = apps.get_model(*(self.model.split(".", 1)))
         return model
@@ -173,7 +183,7 @@ class ExportTemplate(models.Model):
             value = ""
         return value
 
-    def to_xlsx(self, queryset=None):
+    def _to_xlsx(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
@@ -245,7 +255,10 @@ class ExportTemplate(models.Model):
 
         # Rewind the buffer.
         output.seek(0)
+        return output
 
+    def to_xlsx(self, queryset=None):
+        output = self._to_xlsx(queryset)
         # Construct a server response.
         response = HttpResponse(
             output.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -254,7 +267,7 @@ class ExportTemplate(models.Model):
         response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
         return response
 
-    def to_xls(self, queryset=None):
+    def _to_xls(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
@@ -323,23 +336,25 @@ class ExportTemplate(models.Model):
 
         # Rewind the buffer.
         output.seek(0)
+        return output
 
+    def to_xls(self, queryset=None):
+        output = self._to_xls(queryset)
         # Construct a server response.
         response = HttpResponse(output.read(), content_type="application/vnd.ms-excel")
         filename = self.params.get("filename", self.code)
         response["Content-Disposition"] = f'attachment; filename="{filename}.xls"'
         return response
 
-    def to_csv(self, queryset=None):
+    def _to_csv(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
-        filename = self.params.get("filename", self.code)
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
+        # Create an in-memory output file.
+        output = io.StringIO()
 
         # Create a csv writer.
-        writer = csv.writer(response)
+        writer = csv.writer(output)
 
         # Заполнение заголовков
         header = []
@@ -383,6 +398,15 @@ class ExportTemplate(models.Model):
             writer.writerow(data)
             data = []
 
+        content = output.getvalue()
+        return io.BytesIO(content.encode('utf-8'))
+
+    def to_csv(self, queryset=None):
+        output = self._to_csv(queryset)
+        # Construct a server response.
+        filename = self.params.get("filename", self.code)
+        response = HttpResponse(output.read(), content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
         return response
 
     def from_xlsx(self, file=None):
