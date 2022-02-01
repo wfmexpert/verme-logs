@@ -72,7 +72,11 @@ class XLSParser:
                 break
             # Выбираем поле и модель
             current_field = splitted_fields[current_idx]
-            field = model._meta.get_field(current_field)
+            try:
+                field = model._meta.get_field(current_field)
+            except Exception as error:
+                error.key = current_idx
+                raise error
             # Если поле - связь к другой модели
             if field.is_relation:
                 model = None
