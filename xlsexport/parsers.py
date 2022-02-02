@@ -35,7 +35,7 @@ class XLSParser:
                 self.item_data = self.get_struct_from_row(row, rb, template)
                 self.process_item_data(template)
             except Exception as exc:
-                errors.append({'rownum': rownum, 'exc': exc})
+                errors.append({'rownum': rownum, 'exc': exc, 'key': exc.key if hasattr(exc, 'key') else ''})
         return errors
 
     def get_attr_value(self, model, row_data, splitted_fields):
@@ -72,7 +72,11 @@ class XLSParser:
                 break
             # Выбираем поле и модель
             current_field = splitted_fields[current_idx]
-            field = model._meta.get_field(current_field)
+            try:
+                field = model._meta.get_field(current_field)
+            except Exception as error:
+                error.key = current_idx
+                raise error
             # Если поле - связь к другой модели
             if field.is_relation:
                 model = None
@@ -262,8 +266,10 @@ class XLSParser:
                 exec(compile_expression(expression), None, locals_)
                 return locals_.get('result', None)
             try:
+                error_key = ''
                 if target_object:
                     for key, value in defaults.items():
+                        error_key = key
                         setattr(target_object, key, value)
                     # Установка значений JSON полей
                     for k, v in json_fields_to_update.items():
@@ -272,10 +278,12 @@ class XLSParser:
                             json_field = dict()
                             setattr(target_object, k, json_field)
                         dict_merge(json_field, v)
+                        error_key = k
                     target_object.save()
 
                     # Установка M2M полей
                     for m2m_key, m2m_value in m2m.items():
+                        error_key = m2m_key
                         expression = f'target_object.{m2m_key}.set(m2m)'
                         exec_expression(expression, target_object, m2m_value)
                 else:
@@ -287,11 +295,13 @@ class XLSParser:
 
                     # Установка M2M полей
                     for m2m_key, m2m_value in m2m.items():
+                        error_key = m2m_key
                         expression = f'target_object.{m2m_key}.set(m2m)'
                         exec_expression(expression, target_object, m2m_value)
                     self.created_items[target_object] = self.item_data
-            except Exception:
-                raise
+            except Exception as error:
+                error.key = error_key
+                raise error
         self.processed_items.add(target_object)
 
     @staticmethod
