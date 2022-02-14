@@ -75,7 +75,7 @@ class XLSParser:
             try:
                 field = model._meta.get_field(current_field)
             except Exception as error:
-                error.key = current_idx
+                error.key = current_field
                 raise error
             # Если поле - связь к другой модели
             if field.is_relation:
@@ -114,7 +114,13 @@ class XLSParser:
                         # Формируем массив для поиска объекта модели
                         attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
                         # Получили объект модели по значению поля
-                        attr_value = model.objects.filter(**attr_query_dict).first()
+                        try:
+                            attr_value = model.objects.filter(**attr_query_dict).first()
+                            if not attr_value:
+                                raise Exception(f"Не обнаружен объект модели {model._meta.model_name} по значениям {list(attr_query_dict.values())}")
+                        except Exception as error:
+                            error.key = current_field
+                            raise error
                         if m2m_flag:
                             many_to_many_values.append(attr_value)
                             attr_value = many_to_many_values
