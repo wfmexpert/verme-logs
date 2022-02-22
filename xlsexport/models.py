@@ -197,15 +197,14 @@ class ExportTemplate(models.Model):
         # Add a bold format to use to highlight cells.
         bold = workbook.add_format({"bold": True})
 
-        letters = string.ascii_uppercase
-
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(param_fields):
             export_ignore_field = field.get("export_ignore", False)
             if export_ignore_field:
                 continue
-            worksheet.set_column(f"{letters[idx]}:{letters[idx]}", field.get("width", 15))
-            worksheet.write(f"{letters[idx]}1", f'{field.get("name")}', bold)
+
+            worksheet.set_column(idx, idx, field.get("width", 15))
+            worksheet.write(0, idx, f'{field.get("name")}', bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1

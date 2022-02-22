@@ -35,7 +35,7 @@ class XLSParser:
                 self.item_data = self.get_struct_from_row(row, rb, template)
                 self.process_item_data(template)
             except Exception as exc:
-                errors.append({'rownum': rownum, 'exc': exc})
+                errors.append({'rownum': rownum, 'exc': exc, 'key': exc.key if hasattr(exc, 'key') else ''})
         return errors
 
     def get_attr_value(self, model, row_data, splitted_fields):
@@ -72,7 +72,11 @@ class XLSParser:
                 break
             # Выбираем поле и модель
             current_field = splitted_fields[current_idx]
-            field = model._meta.get_field(current_field)
+            try:
+                field = model._meta.get_field(current_field)
+            except Exception as error:
+                error.key = current_field
+                raise error
             # Если поле - связь к другой модели
             if field.is_relation:
                 model = None
@@ -110,7 +114,13 @@ class XLSParser:
                         # Формируем массив для поиска объекта модели
                         attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
                         # Получили объект модели по значению поля
-                        attr_value = model.objects.filter(**attr_query_dict).first()
+                        try:
+                            attr_value = model.objects.filter(**attr_query_dict).first()
+                            if not attr_value:
+                                raise Exception(f"Не обнаружен объект модели {model._meta.model_name} по значениям {list(attr_query_dict.values())}")
+                        except Exception as error:
+                            error.key = current_field
+                            raise error
                         if m2m_flag:
                             many_to_many_values.append(attr_value)
                             attr_value = many_to_many_values
@@ -186,13 +196,14 @@ class XLSParser:
         for param_field in param_fields:
             if param_field.get('import_ignore', True):
                 ignore_fields_list.add(param_field['field'])
-
         # Список параметризированных полей и проверка GenericFields
         field_names = {field.name: field for field in fields}
         base_field_names = [param_field["field"].split(".")[0] for param_field in param_fields]
         generic_fk_fields = {field.fk_field: field for field in fields if isinstance(field, GenericForeignKey)}
         parameterized_fields = dict()
         for param_field in param_fields:
+            if param_field["field"] in ignore_fields_list:
+                continue
             base_name = param_field["field"].split(".")[0]
             if base_name in field_names and isinstance(field_names[base_name], GenericForeignKey):
                 parameterized_fields[param_field["field"]] = field_names[base_name].ct_field
@@ -261,8 +272,10 @@ class XLSParser:
                 exec(compile_expression(expression), None, locals_)
                 return locals_.get('result', None)
             try:
+                error_key = ''
                 if target_object:
                     for key, value in defaults.items():
+                        error_key = key
                         setattr(target_object, key, value)
                     # Установка значений JSON полей
                     for k, v in json_fields_to_update.items():
@@ -271,10 +284,12 @@ class XLSParser:
                             json_field = dict()
                             setattr(target_object, k, json_field)
                         dict_merge(json_field, v)
+                        error_key = k
                     target_object.save()
 
                     # Установка M2M полей
                     for m2m_key, m2m_value in m2m.items():
+                        error_key = m2m_key
                         expression = f'target_object.{m2m_key}.set(m2m)'
                         exec_expression(expression, target_object, m2m_value)
                 else:
@@ -286,11 +301,13 @@ class XLSParser:
 
                     # Установка M2M полей
                     for m2m_key, m2m_value in m2m.items():
+                        error_key = m2m_key
                         expression = f'target_object.{m2m_key}.set(m2m)'
                         exec_expression(expression, target_object, m2m_value)
                     self.created_items[target_object] = self.item_data
-            except Exception:
-                raise
+            except Exception as error:
+                error.key = error_key
+                raise error
         self.processed_items.add(target_object)
 
     @staticmethod
@@ -345,13 +362,16 @@ class XLSParser:
         for idx, item in enumerate(row):
             param_field = param_fields[idx]
             field_path = param_field['field']
+            model_field = None
+            if field_path.count('.') == 0:
+                model_field = template.get_model()._meta.get_field(field_path)
             attr_value = clean_value(row[idx])
             value = None
             if 'format' in param_field:
                 value = get_formatted_field(attr_value, param_field['format'])
                 if not value and attr_value:
                     value = attr_value
-            elif field_path.count('.') == 0 and template.get_model()._meta.get_field(field_path).get_internal_type() == 'DurationField':
+            elif model_field and hasattr(model_field, "get_internal_type") and model_field.get_internal_type() == 'DurationField':
                 # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
                 value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
             elif attr_value:
