@@ -1,13 +1,12 @@
 import datetime
 import xlrd
-import re
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
-from django.db.models import Q
 
-from collections import defaultdict, Mapping
+from collections import defaultdict
+from collections.abc import Mapping
 
 
 class CustomException(Exception):
