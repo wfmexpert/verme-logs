@@ -19,6 +19,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.timezone import make_naive
 from xlsexport.mixins import AdminExportMixin
+from django_admin_listfilter_dropdown.filters import DropdownFilter, ChoiceDropdownFilter, RelatedDropdownFilter
 
 from .forms import ServerRecordForm
 from .models import ClientRecord, ServerRecord
@@ -181,7 +182,9 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         "html_message",
     )
     readonly_fields = ("created_at_str",)
-    list_filter = (SourceFilter, MethodFilter, LevelFilter, HeadquarterFilter)
+    list_filter = ((SourceFilter, DropdownFilter),
+                   MethodFilter, LevelFilter, HeadquarterFilter)
+    # DropdownFilter, ChoiceDropdownFilter, RelatedDropdownFilter
     search_fields = ("message", "tags")
     form = ServerRecordForm
     show_full_result_count = False
