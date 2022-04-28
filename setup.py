@@ -25,6 +25,7 @@ setup(
         'xlrd',
         'XlsxWriter',
         'xlwt',
+        'django-admin-list-filter-dropdown',
     ],
     classifiers=[
         'Environment :: Web Environment',

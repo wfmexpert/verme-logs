@@ -19,7 +19,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.timezone import make_naive
 from xlsexport.mixins import AdminExportMixin
-from django_admin_listfilter_dropdown.filters import DropdownFilter, ChoiceDropdownFilter, RelatedDropdownFilter
+from django_admin_listfilter_dropdown.filters import DropdownFilter
 
 from .forms import ServerRecordForm
 from .models import ClientRecord, ServerRecord
