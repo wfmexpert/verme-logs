@@ -133,6 +133,24 @@ class IndexFilter(admin.SimpleListFilter):
         return queryset.filter(Q(**query_dict))
 
 
+class ServerRecordSourceFilter(DropdownFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "Источник"
+
+
+class ServerRecordLevelFilter(DropdownFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "Уровень"
+
+
+class ServerRecordHeadquaterFilter(DropdownFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "Клиент"
+
+
 class SourceFilter(IndexFilter):
     title = "Источник"
     parameter_name = "source"
@@ -182,9 +200,11 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         "html_message",
     )
     readonly_fields = ("created_at_str",)
-    list_filter = ((SourceFilter, DropdownFilter),
-                   MethodFilter, LevelFilter, HeadquarterFilter)
-    # DropdownFilter, ChoiceDropdownFilter, RelatedDropdownFilter
+    list_filter = (("source", ServerRecordSourceFilter),
+                   MethodFilter,
+                   ("level", ServerRecordLevelFilter),
+                   ("headquater", ServerRecordHeadquaterFilter),
+                   )
     search_fields = ("message", "tags")
     form = ServerRecordForm
     show_full_result_count = False
