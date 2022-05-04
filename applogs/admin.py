@@ -139,6 +139,12 @@ class ServerRecordSourceFilter(DropdownFilter):
         self.title = "Источник"
 
 
+class ServerRecordMethodFilter(DropdownFilter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = "Метод"
+
+
 class ServerRecordLevelFilter(DropdownFilter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -201,7 +207,7 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     )
     readonly_fields = ("created_at_str",)
     list_filter = (("source", ServerRecordSourceFilter),
-                   MethodFilter,
+                   ("method", ServerRecordMethodFilter),
                    ("level", ServerRecordLevelFilter),
                    ("headquater", ServerRecordHeadquaterFilter),
                    )
