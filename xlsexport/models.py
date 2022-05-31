@@ -2,6 +2,7 @@ from django.core.exceptions import FieldDoesNotExist
 
 from django.db import models
 from django.apps import apps
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.http import HttpResponse
 from django.utils.timezone import get_current_timezone
 from datetime import datetime, date, timedelta
@@ -159,7 +160,7 @@ class ExportTemplate(models.Model):
                 item_field = obj._meta.get_field(field_name)
             except BaseException:
                 item_field = None
-            if item_field and (isinstance(item_field, models.ForeignKey) or isinstance(item_field, models.OneToOneField)):
+            if item_field and isinstance(item_field, (models.ForeignKey, models.OneToOneField, GenericForeignKey)):
                 # Если поле - ссылка на объект, его используем как объект для получения следующих значений
                 obj = value
             elif item_field and item_field.many_to_many:
