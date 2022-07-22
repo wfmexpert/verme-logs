@@ -149,7 +149,7 @@ class ExportTemplate(models.Model):
                 item_field = obj._meta.get_field(field_name)
             except BaseException:
                 item_field = None
-            if item_field and (isinstance(item_field, models.ForeignKey) or isinstance(item_field, models.OneToOneField)):
+            if item_field and (isinstance(item_field, models.ForeignKey) or isinstance(item_field, models.OneToOneField) or isinstance(item_field, models.OneToOneRel)):
                 # Если поле - ссылка на объект, его используем как объект для получения следующих значений
                 obj = value
             elif item_field and item_field.many_to_many:
