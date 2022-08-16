@@ -1,13 +1,13 @@
 import datetime
-import xlrd
 import re
+from collections import Mapping, defaultdict
+from io import BytesIO
 
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
 from django.db.models import Q
-
-from collections import defaultdict, Mapping
+from openpyxl import load_workbook
 
 
 class CustomException(Exception):
@@ -26,11 +26,12 @@ class XLSParser:
         self.created_items = defaultdict(list)
 
     def parse(self, template, file_contents):
-        rb = xlrd.open_workbook(file_contents=file_contents)
-        sheet = rb.sheet_by_index(0)
+        rb = load_workbook(BytesIO(file_contents))
+        sheet = rb.worksheets[0]
         errors = []
-        for rownum in range(1, sheet.nrows):
-            row = sheet.row_values(rownum)
+        for rownum, row in enumerate(sheet.iter_rows(values_only=True)):
+            if not rownum:
+                continue
             try:
                 self.item_data = self.get_struct_from_row(row, rb, template)
                 self.process_item_data(template)
@@ -331,7 +332,7 @@ class XLSParser:
 
         def get_cell_date(cell):
             try:
-                return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
+                return str(cell).strip() or None
             except TypeError:
                 pass
 
