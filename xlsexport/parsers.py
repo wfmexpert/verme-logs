@@ -3,6 +3,7 @@ import re
 from collections import Mapping, defaultdict
 from io import BytesIO
 
+import xlrd
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
@@ -18,6 +19,7 @@ class XLSParser:
     """
     Парсер xls-файлов
     """
+    FORMAT = "xls"
 
     def __init__(self):
         self.cache_dict = dict()
@@ -26,12 +28,11 @@ class XLSParser:
         self.created_items = defaultdict(list)
 
     def parse(self, template, file_contents):
-        rb = load_workbook(BytesIO(file_contents))
-        sheet = rb.worksheets[0]
+        rb = xlrd.open_workbook(file_contents=file_contents)
+        sheet = rb.sheet_by_index(0)
         errors = []
-        for rownum, row in enumerate(sheet.iter_rows(values_only=True)):
-            if not rownum:
-                continue
+        for rownum in range(1, sheet.nrows):
+            row = sheet.row_values(rownum)
             try:
                 self.item_data = self.get_struct_from_row(row, rb, template)
                 self.process_item_data(template)
@@ -332,7 +333,10 @@ class XLSParser:
 
         def get_cell_date(cell):
             try:
-                return str(cell).strip() or None
+                if self.FORMAT == "xls":
+                    return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
+                else:
+                    return str(cell).strip() or None
             except TypeError:
                 pass
 
@@ -379,3 +383,21 @@ class XLSParser:
                 value = attr_value
             result.update({field_path: value})
         return result
+
+
+class XLSXParser(XLSParser):
+    FORMAT = "xlsx"
+
+    def parse(self, template, file_contents):
+        rb = load_workbook(BytesIO(file_contents))
+        sheet = rb.worksheets[0]
+        errors = []
+        for rownum, row in enumerate(sheet.iter_rows(values_only=True)):
+            if not rownum:
+                continue
+            try:
+                self.item_data = self.get_struct_from_row(row, rb, template)
+                self.process_item_data(template)
+            except Exception as exc:
+                errors.append({'rownum': rownum, 'exc': exc, 'key': exc.key if hasattr(exc, 'key') else ''})
+        return errors
