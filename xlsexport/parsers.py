@@ -34,7 +34,7 @@ class XLSParser:
         for rownum in range(1, sheet.nrows):
             row = sheet.row_values(rownum)
             try:
-                self.item_data = self.get_struct_from_row(row, rb, template)
+                self.item_data = self.get_struct_from_row(row, rb, template, file_format=self.FORMAT)
                 self.process_item_data(template)
             except Exception as exc:
                 errors.append({'rownum': rownum, 'exc': exc, 'key': exc.key if hasattr(exc, 'key') else ''})
@@ -313,9 +313,9 @@ class XLSParser:
         self.processed_items.add(target_object)
 
     @staticmethod
-    def get_struct_from_row(row, rb, template):
+    def get_struct_from_row(row, rb, template, file_format):
 
-        def get_formatted_field(value, format):
+        def get_formatted_field(value, format, file_format):
             if format.find(".0") != -1:
                 return get_float(value, len(format.split(".")[-1].strip()))
             elif format.find("#") != -1:
@@ -326,14 +326,14 @@ class XLSParser:
                 try:
                     formatted_value = datetime.datetime.strptime(value, format)
                 except TypeError:
-                    formatted_value = get_cell_date(value)
+                    formatted_value = get_cell_date(value, file_format)
                 return formatted_value
             else:
-                return get_cell_date(value)
+                return get_cell_date(value, file_format)
 
-        def get_cell_date(cell):
+        def get_cell_date(cell, file_format):
             try:
-                if self.FORMAT == "xls":
+                if file_format == "xls":
                     return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
                 else:
                     return str(cell).strip() or None
@@ -373,7 +373,7 @@ class XLSParser:
             attr_value = clean_value(row[idx])
             value = None
             if 'format' in param_field:
-                value = get_formatted_field(attr_value, param_field['format'])
+                value = get_formatted_field(attr_value, param_field['format'], file_format)
                 if not value and attr_value:
                     value = attr_value
             elif model_field and hasattr(model_field, "get_internal_type") and model_field.get_internal_type() == 'DurationField':
@@ -396,7 +396,7 @@ class XLSXParser(XLSParser):
             if not rownum:
                 continue
             try:
-                self.item_data = self.get_struct_from_row(row, rb, template)
+                self.item_data = self.get_struct_from_row(row, rb, template, file_format=self.FORMAT)
                 self.process_item_data(template)
             except Exception as exc:
                 errors.append({'rownum': rownum, 'exc': exc, 'key': exc.key if hasattr(exc, 'key') else ''})
