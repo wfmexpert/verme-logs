@@ -372,7 +372,7 @@ class XLSParser:
                 model_field = template.get_model()._meta.get_field(field_path)
             attr_value = clean_value(row[idx])
             value = None
-            if 'format' in param_field:
+            if 'format' in param_field and attr_value:
                 value = get_formatted_field(attr_value, param_field['format'], file_format)
                 if not value and attr_value:
                     value = attr_value
