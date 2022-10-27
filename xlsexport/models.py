@@ -267,7 +267,8 @@ class ExportTemplate(models.Model):
         output = self._to_xlsx(queryset)
         # Construct a server response.
         response = HttpResponse(
-            output.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            output.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         filename = self.params.get("filename", self.code)
         response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
