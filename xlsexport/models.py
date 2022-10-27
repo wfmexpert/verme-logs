@@ -1,18 +1,14 @@
-from django.core.exceptions import FieldDoesNotExist
-
-from django.db import models
-from django.apps import apps
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.http import HttpResponse
-from django.utils.timezone import get_current_timezone
-from datetime import datetime, date, timedelta
-
-import xlsxwriter
-import xlwt
 import csv
 import io
 import json
-import string
+import xlsxwriter
+import xlwt
+from datetime import date, datetime, timedelta
+from django.apps import apps
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.db import models
+from django.http import HttpResponse
+from django.utils.timezone import get_current_timezone
 
 from .parsers import XLSParser
 
@@ -72,12 +68,10 @@ class ExportTemplate(models.Model):
         return None
 
     def get_model(self):
-        model = apps.get_model(*(self.model.split(".", 1)))
-        return model
+        return apps.get_model(*(self.model.split(".", 1)))
 
     def get_model_fields(self):
-        fields = self.get_model()._meta.get_fields()
-        return fields
+        return self.get_model()._meta.get_fields()
 
     def get_param_fields(self):
         fields = self.get_model_fields()
@@ -93,7 +87,7 @@ class ExportTemplate(models.Model):
                         "key_field": field.primary_key,
                         "export_ignore": False,
                         "import_ignore": False,
-                    }
+                    },
                 )
         return param_fields, fields
 
@@ -121,17 +115,22 @@ class ExportTemplate(models.Model):
             return queryset
         fields_qs = list()
 
-        for idx, field in enumerate(param_fields):
+        for field in param_fields:
             if field.get("export_ignore", False):
                 continue
             field_name = field.get("field").split(".")
             if len(field_name) > 1:
                 field_name.pop()
-            for f in self.get_model_fields():
-                if field_name[0] == f.name and f.is_relation and f.related_model is not None and not f.many_to_many:
+            for model_field in self.get_model_fields():
+                if (
+                    field_name[0] == model_field.name
+                    and model_field.is_relation
+                    and model_field.related_model is not None
+                    and not model_field.many_to_many
+                ):
                     if len(field_name) > 1:
                         try:
-                            related_field = f.related_model._meta.get_field(field_name[1])
+                            related_field = model_field.related_model._meta.get_field(field_name[1])
                         except BaseException:
                             related_field = None
                         if isinstance(related_field, JSONField):
@@ -150,6 +149,7 @@ class ExportTemplate(models.Model):
         pass
 
     def get_attr_value(self, obj, field):
+        value = None
         # Делим поле на части по разделителю точке
         field = field.get("field").split(".")
         for ind, field_name in enumerate(field):
@@ -160,7 +160,10 @@ class ExportTemplate(models.Model):
                 item_field = obj._meta.get_field(field_name)
             except BaseException:
                 item_field = None
-            if item_field and isinstance(item_field, (models.ForeignKey, models.OneToOneField, GenericForeignKey)):
+            if item_field and isinstance(
+                item_field,
+                (models.ForeignKey, models.OneToOneField, models.OneToOneRel, GenericForeignKey),
+            ):
                 # Если поле - ссылка на объект, его используем как объект для получения следующих значений
                 obj = value
             elif item_field and item_field.many_to_many:
@@ -179,6 +182,9 @@ class ExportTemplate(models.Model):
                 else:
                     value = json.dumps(getattr(obj, field_name), ensure_ascii=False)
                 break  # Для JSONField допустима только одна вложенность
+            else:
+                # Используем значение как объект для получения следующих значений
+                obj = value
 
         if value is None:  # Output False explicitly
             value = ""
