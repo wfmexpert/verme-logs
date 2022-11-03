@@ -88,6 +88,8 @@ class XLSParser:
                     m2m_flag = True
                 if model:
                     processed_model_list.append(model)
+                if field.null and not self.item_data[row_data]:
+                    break
             elif isinstance(field, JSONField):
                 json_key = splitted_fields[current_idx + 1]
                 attr_value = self.item_data[".".join(splitted_fields)]
