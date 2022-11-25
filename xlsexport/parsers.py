@@ -65,7 +65,7 @@ class XLSParser:
         fk_field = None
 
         while True:
-            if not current_idx < splitted_length:
+            if current_idx >= splitted_length:
                 break
             # Выбираем поле и модель
             current_field = splitted_fields[current_idx]
@@ -114,11 +114,16 @@ class XLSParser:
                         attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
                         # Получили объект модели по значению поля
                         try:
-                            attr_value = model.objects.filter(**attr_query_dict).first()
-                            if not attr_value:
-                                raise Exception(
-                                    f"Не обнаружен объект модели {model._meta.model_name} по значениям {list(attr_query_dict.values())}",
-                                )
+                            # Должен быть найден строго один объект, иначе результат импорта будет непредсказуемым
+                            attr_values = list(model.objects.filter(**attr_query_dict)[:2])
+                            if not attr_values:
+                                raise ValueError(f"Не обнаружен объект модели {model._meta.model_name} "
+                                                 f"по значениям {list(attr_query_dict.values())}")
+                            if len(attr_values) > 1:
+                                del attr_values
+                                raise ValueError(f"Найдены множественные объекты модели {model._meta.model_name} "
+                                                 f"по значениям {list(attr_query_dict.values())}")
+                            attr_value = attr_values[0]
                         except Exception as error:
                             error.key = current_field
                             raise error
@@ -209,9 +214,9 @@ class XLSParser:
             if base_name in field_names and isinstance(field_names[base_name], GenericForeignKey):
                 parameterized_fields[param_field["field"]] = field_names[base_name].ct_field
                 if parameterized_fields[param_field["field"]] not in base_field_names:
-                    raise Exception(f"Не обнаружен тип поля {param_field['field']} в параметрах")
+                    raise ValueError(f"Не обнаружен тип поля {param_field['field']} в параметрах")
             if base_name in generic_fk_fields and generic_fk_fields[base_name].ct_field not in base_field_names:
-                raise Exception(f"Не обнаружен тип поля {param_field['field']} в параметрах")
+                raise ValueError(f"Не обнаружен тип поля {param_field['field']} в параметрах")
 
         # Для update_or_create
         result_query = dict()
