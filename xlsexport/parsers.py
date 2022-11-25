@@ -377,7 +377,7 @@ class XLSParser:
             ):
                 # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
                 value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
-            elif attr_value:
+            elif attr_value is not None:  # Чтобы можно было импортировать "", 0 и 0.0 значения
                 value = attr_value
             result.update({field_path: value})
         return result
