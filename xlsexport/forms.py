@@ -1,6 +1,5 @@
 import json
 from django import forms
-from django.db.models import JSONField
 
 from .models import ExportTemplate
 
@@ -9,8 +8,7 @@ try:
 except ImportError:
     from django.forms.fields import InvalidJSONInput
 
-
-class JSONFormattedField(JSONField):
+class JSONFormattedField(forms.JSONField):
     def prepare_value(self, value):
         if isinstance(value, InvalidJSONInput):
             return value
