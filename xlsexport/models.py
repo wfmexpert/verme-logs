@@ -1,6 +1,8 @@
 import csv
 import io
 import json
+from decimal import Decimal
+
 import xlsxwriter
 import xlwt
 from datetime import date, datetime, timedelta
@@ -247,7 +249,7 @@ class ExportTemplate(models.Model):
                             cell_format.set_num_format(attr_format)
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
-                if isinstance(attr_value, float) or isinstance(attr_value, int):
+                if isinstance(attr_value, (float, int, Decimal)):
                     if attr_format:
                         cell_format = workbook.add_format()
                         cell_format.set_num_format(attr_format)
@@ -330,6 +332,10 @@ class ExportTemplate(models.Model):
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float):
+                    if attr_format:
+                        cell_format = xlwt.XFStyle()
+                        cell_format.num_format_str = attr_format
+                if isinstance(attr_value, Decimal):
                     if attr_format:
                         cell_format = xlwt.XFStyle()
                         cell_format.num_format_str = attr_format

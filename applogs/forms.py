@@ -9,7 +9,13 @@ except ImportError:
     from django.forms.fields import InvalidJSONInput
 
 
-class JSONFormattedField(forms.JSONField):
+try:
+    from django.contrib.postgres.forms.jsonb import JSONField
+except ImportError:
+    from django.forms import JSONField
+
+
+class JSONFormattedField(JSONField):
     def prepare_value(self, value):
         if isinstance(value, InvalidJSONInput):
             return value
