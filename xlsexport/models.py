@@ -362,12 +362,14 @@ class ExportTemplate(models.Model):
     def _to_csv(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
+        encoding = self.params.get("encoding", "utf-8")
+        delimiter = self.params.get("delimiter", ",")
 
         # Create an in-memory output file.
         output = io.StringIO()
 
         # Create a csv writer.
-        writer = csv.writer(output)
+        writer = csv.writer(output, delimiter=delimiter)
 
         # Заполнение заголовков
         header = []
@@ -412,7 +414,7 @@ class ExportTemplate(models.Model):
             data = []
 
         content = output.getvalue()
-        return io.BytesIO(content.encode('utf-8'))
+        return io.BytesIO(content.encode(encoding))
 
     def to_csv(self, queryset=None):
         output = self._to_csv(queryset)
