@@ -4,6 +4,8 @@ class LogsDBRouter():
     LOG_APP_DB_ALIAS = 'applogs'
 
     def is_log_app(self, obj):
+        if not obj:
+            return False
         return obj._meta.app_label == self.LOG_APP_NAME
 
     def db_for_read(self, model, **hints):
