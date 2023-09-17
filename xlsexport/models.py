@@ -1,17 +1,16 @@
-from django.core.exceptions import FieldDoesNotExist
-
-from django.db import models
-from django.apps import apps
-from django.http import HttpResponse
-from django.utils.timezone import get_current_timezone
-from datetime import datetime, date, timedelta
-
-import xlsxwriter
-import xlwt
 import csv
 import io
 import json
-import string
+from decimal import Decimal
+
+import xlsxwriter
+import xlwt
+from datetime import date, datetime, timedelta
+from django.apps import apps
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.db import models
+from django.http import HttpResponse
+from django.utils.timezone import get_current_timezone
 
 from .parsers import XLSParser, XLSXParser
 
@@ -60,13 +59,21 @@ class ExportTemplate(models.Model):
             return self.to_csv(queryset)
         return None
 
+    def _to_export(self, queryset=None):
+        """Возвращает BytesIO вместо HttpResponse"""
+        if self.format == "xlsx":
+            return self._to_xlsx(queryset)
+        elif self.format == "xls":
+            return self._to_xls(queryset)
+        elif self.format == "csv":
+            return self._to_csv(queryset)
+        return None
+
     def get_model(self):
-        model = apps.get_model(*(self.model.split(".", 1)))
-        return model
+        return apps.get_model(*(self.model.split(".", 1)))
 
     def get_model_fields(self):
-        fields = self.get_model()._meta.get_fields()
-        return fields
+        return self.get_model()._meta.get_fields()
 
     def get_param_fields(self):
         fields = self.get_model_fields()
@@ -82,7 +89,7 @@ class ExportTemplate(models.Model):
                         "key_field": field.primary_key,
                         "export_ignore": False,
                         "import_ignore": False,
-                    }
+                    },
                 )
         return param_fields, fields
 
@@ -110,17 +117,22 @@ class ExportTemplate(models.Model):
             return queryset
         fields_qs = list()
 
-        for idx, field in enumerate(param_fields):
+        for field in param_fields:
             if field.get("export_ignore", False):
                 continue
             field_name = field.get("field").split(".")
             if len(field_name) > 1:
                 field_name.pop()
-            for f in self.get_model_fields():
-                if field_name[0] == f.name and f.is_relation and f.related_model is not None and not f.many_to_many:
+            for model_field in self.get_model_fields():
+                if (
+                    field_name[0] == model_field.name
+                    and model_field.is_relation
+                    and model_field.related_model is not None
+                    and not model_field.many_to_many
+                ):
                     if len(field_name) > 1:
                         try:
-                            related_field = f.related_model._meta.get_field(field_name[1])
+                            related_field = model_field.related_model._meta.get_field(field_name[1])
                         except BaseException:
                             related_field = None
                         if isinstance(related_field, JSONField):
@@ -139,6 +151,7 @@ class ExportTemplate(models.Model):
         pass
 
     def get_attr_value(self, obj, field):
+        value = None
         # Делим поле на части по разделителю точке
         field = field.get("field").split(".")
         for ind, field_name in enumerate(field):
@@ -149,7 +162,10 @@ class ExportTemplate(models.Model):
                 item_field = obj._meta.get_field(field_name)
             except BaseException:
                 item_field = None
-            if item_field and (isinstance(item_field, models.ForeignKey) or isinstance(item_field, models.OneToOneField) or isinstance(item_field, models.OneToOneRel)):
+            if item_field and isinstance(
+                item_field,
+                (models.ForeignKey, models.OneToOneField, models.OneToOneRel, GenericForeignKey),
+            ):
                 # Если поле - ссылка на объект, его используем как объект для получения следующих значений
                 obj = value
             elif item_field and item_field.many_to_many:
@@ -168,12 +184,15 @@ class ExportTemplate(models.Model):
                 else:
                     value = json.dumps(getattr(obj, field_name), ensure_ascii=False)
                 break  # Для JSONField допустима только одна вложенность
+            else:
+                # Используем значение как объект для получения следующих значений
+                obj = value
 
         if value is None:  # Output False explicitly
             value = ""
         return value
 
-    def to_xlsx(self, queryset=None):
+    def _to_xlsx(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
@@ -187,15 +206,14 @@ class ExportTemplate(models.Model):
         # Add a bold format to use to highlight cells.
         bold = workbook.add_format({"bold": True})
 
-        letters = string.ascii_uppercase
-
         # Установка ширины колонок и заполнение заголовков
         for idx, field in enumerate(param_fields):
             export_ignore_field = field.get("export_ignore", False)
             if export_ignore_field:
                 continue
-            worksheet.set_column(f"{letters[idx]}:{letters[idx]}", field.get("width", 15))
-            worksheet.write(f"{letters[idx]}1", f'{field.get("name")}', bold)
+
+            worksheet.set_column(idx, idx, field.get("width", 15))
+            worksheet.write(0, idx, f'{field.get("name")}', bold)
 
         # Start from the first cell. Rows and columns are zero indexed.
         row = 1
@@ -216,10 +234,12 @@ class ExportTemplate(models.Model):
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone(get_current_timezone())
                     if attr_format:
-                        attr_value = attr_value.strftime(attr_format)
-                    else:
-                        cell_format = workbook.add_format()
-                        cell_format.set_num_format(attr_format)
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
+                        else:
+                            attr_value = attr_value.replace(tzinfo=None)
+                            cell_format = workbook.add_format()
+                            cell_format.set_num_format(attr_format)
                 if isinstance(attr_value, date):
                     if attr_format:
                         if attr_format.startswith("%"):
@@ -229,7 +249,7 @@ class ExportTemplate(models.Model):
                             cell_format.set_num_format(attr_format)
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
-                if isinstance(attr_value, float) or isinstance(attr_value, int):
+                if isinstance(attr_value, (float, int, Decimal)):
                     if attr_format:
                         cell_format = workbook.add_format()
                         cell_format.set_num_format(attr_format)
@@ -243,16 +263,20 @@ class ExportTemplate(models.Model):
 
         # Rewind the buffer.
         output.seek(0)
+        return output
 
+    def to_xlsx(self, queryset=None):
+        output = self._to_xlsx(queryset)
         # Construct a server response.
         response = HttpResponse(
-            output.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            output.read(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         filename = self.params.get("filename", self.code)
         response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
         return response
 
-    def to_xls(self, queryset=None):
+    def _to_xls(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
 
@@ -292,10 +316,12 @@ class ExportTemplate(models.Model):
                 if isinstance(attr_value, datetime):
                     attr_value = attr_value.astimezone(get_current_timezone())
                     if attr_format:
-                        attr_value = attr_value.strftime(attr_format)
-                    else:
-                        cell_format = workbook.add_format()
-                        cell_format.set_num_format(attr_format)
+                        if attr_format.startswith("%"):
+                            attr_value = attr_value.strftime(attr_format)
+                        else:
+                            attr_value = attr_value.replace(tzinfo=None)
+                            cell_format = xlwt.XFStyle()
+                            cell_format.num_format_str = attr_format
                 if isinstance(attr_value, date):
                     if attr_format:
                         if attr_format.startswith("%"):
@@ -309,6 +335,10 @@ class ExportTemplate(models.Model):
                     if attr_format:
                         cell_format = xlwt.XFStyle()
                         cell_format.num_format_str = attr_format
+                if isinstance(attr_value, Decimal):
+                    if attr_format:
+                        cell_format = xlwt.XFStyle()
+                        cell_format.num_format_str = attr_format
                 if not cell_format:
                     worksheet.write(row, idx, str(attr_value))
                 else:
@@ -319,23 +349,27 @@ class ExportTemplate(models.Model):
 
         # Rewind the buffer.
         output.seek(0)
+        return output
 
+    def to_xls(self, queryset=None):
+        output = self._to_xls(queryset)
         # Construct a server response.
         response = HttpResponse(output.read(), content_type="application/vnd.ms-excel")
         filename = self.params.get("filename", self.code)
         response["Content-Disposition"] = f'attachment; filename="{filename}.xls"'
         return response
 
-    def to_csv(self, queryset=None):
+    def _to_csv(self, queryset=None):
         param_fields, fields = self.get_param_fields()
         queryset = self.get_queryset(queryset)
+        encoding = self.params.get("encoding", "utf-8")
+        delimiter = self.params.get("delimiter", ",")
 
-        filename = self.params.get("filename", self.code)
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
+        # Create an in-memory output file.
+        output = io.StringIO()
 
         # Create a csv writer.
-        writer = csv.writer(response)
+        writer = csv.writer(output, delimiter=delimiter)
 
         # Заполнение заголовков
         header = []
@@ -379,6 +413,15 @@ class ExportTemplate(models.Model):
             writer.writerow(data)
             data = []
 
+        content = output.getvalue()
+        return io.BytesIO(content.encode(encoding))
+
+    def to_csv(self, queryset=None):
+        output = self._to_csv(queryset)
+        # Construct a server response.
+        filename = self.params.get("filename", self.code)
+        response = HttpResponse(output.read(), content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
         return response
 
     def from_xlsx(self, file=None):

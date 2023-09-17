@@ -1,6 +1,5 @@
 import json
 from django import forms
-from django.contrib.postgres.forms.jsonb import JSONField
 
 from .models import ExportTemplate
 
@@ -8,6 +7,12 @@ try:
     from django.contrib.postgres.forms.jsonb import InvalidJSONInput
 except ImportError:
     from django.forms.fields import InvalidJSONInput
+
+
+try:
+    from django.contrib.postgres.forms.jsonb import JSONField
+except ImportError:
+    from django.forms import JSONField
 
 
 class JSONFormattedField(JSONField):

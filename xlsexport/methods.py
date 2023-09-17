@@ -53,7 +53,9 @@ def get_report_by_model(model=None, queryset=None):
             if field.get_internal_type() == 'DateField':
                 field_dict.update({"format": "DD.MM.YYYY"})
             if field.get_internal_type() == 'FloatField':
-                field_dict.update({"format": "0.000"})
+                field_dict.update({"format": "0.00"})
+            if field.get_internal_type() == 'DecimalField':
+                field_dict.update({"format": "0.00"})
             params['fields'].append(field_dict)
 
         template_dict = {"code": filename,

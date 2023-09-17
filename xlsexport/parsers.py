@@ -1,13 +1,10 @@
 import datetime
-import re
-from collections import Mapping, defaultdict
-from io import BytesIO
-
 import xlrd
+from collections import defaultdict
+from collections.abc import Mapping
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
-from django.db.models import Q
 from openpyxl import load_workbook
 
 
@@ -37,7 +34,7 @@ class XLSParser:
                 self.item_data = self.get_struct_from_row(row, rb, template, file_format=self.FORMAT)
                 self.process_item_data(template)
             except Exception as exc:
-                errors.append({'rownum': rownum, 'exc': exc, 'key': exc.key if hasattr(exc, 'key') else ''})
+                errors.append({"rownum": rownum, "exc": exc, "key": exc.key if hasattr(exc, "key") else ""})
         return errors
 
     def get_attr_value(self, model, row_data, splitted_fields):
@@ -57,7 +54,7 @@ class XLSParser:
 
     def get_attr_value_ext(self, model, row_data, type_model=None):
         # Делим поле по разделителю
-        splitted_fields = row_data.split('.')
+        splitted_fields = row_data.split(".")
         splitted_length = len(splitted_fields)
 
         current_idx = 0
@@ -70,7 +67,7 @@ class XLSParser:
         fk_field = None
 
         while True:
-            if not current_idx < splitted_length:
+            if current_idx >= splitted_length:
                 break
             # Выбираем поле и модель
             current_field = splitted_fields[current_idx]
@@ -93,16 +90,18 @@ class XLSParser:
                     m2m_flag = True
                 if model:
                     processed_model_list.append(model)
+                if field.null and not self.item_data[row_data]:
+                    break
             elif isinstance(field, JSONField):
-                json_key = splitted_fields[current_idx+1]
-                attr_value = self.item_data['.'.join(splitted_fields)]
+                json_key = splitted_fields[current_idx + 1]
+                attr_value = self.item_data[".".join(splitted_fields)]
                 if current_field in json_values:
                     json_values[current_field][json_key] = attr_value
                 else:
                     json_values[current_field] = {json_key: attr_value}
                 break
             else:
-                data_values = str(self.item_data[row_data]).split('|')
+                data_values = str(self.item_data[row_data]).split("|")
                 if current_idx > 0:
                     if len(data_values) > 1:
                         for s_value in data_values:
@@ -117,9 +116,16 @@ class XLSParser:
                         attr_query_dict = {splitted_fields[current_idx]: self.item_data[row_data]}
                         # Получили объект модели по значению поля
                         try:
-                            attr_value = model.objects.filter(**attr_query_dict).first()
-                            if not attr_value:
-                                raise Exception(f"Не обнаружен объект модели {model._meta.model_name} по значениям {list(attr_query_dict.values())}")
+                            # Должен быть найден строго один объект, иначе результат импорта будет непредсказуемым
+                            attr_values = list(model.objects.filter(**attr_query_dict)[:2])
+                            if not attr_values:
+                                raise ValueError(f"Не обнаружен объект модели {model._meta.model_name} "
+                                                 f"по значениям {list(attr_query_dict.values())}")
+                            if len(attr_values) > 1:
+                                del attr_values
+                                raise ValueError(f"Найдены множественные объекты модели {model._meta.model_name} "
+                                                 f"по значениям {list(attr_query_dict.values())}")
+                            attr_value = attr_values[0]
                         except Exception as error:
                             error.key = current_field
                             raise error
@@ -153,7 +159,7 @@ class XLSParser:
                     current_value = current_object_attr_query
             # ManytoMany Field
             else:
-                search_values = current_value.split('|')
+                search_values = current_value.split("|")
                 for s_value in search_values:
                     current_object_attr_query = {splitted_fields[current_idx2]: s_value}
                     if processed_model_list:
@@ -186,18 +192,18 @@ class XLSParser:
         key_fields = template.get_key_fields()
 
         if not param_fields or not key_fields:
-            raise CustomException(f"Не указаны поля или ключевые поля в шаблоне")
+            raise CustomException("Не указаны поля или ключевые поля в шаблоне")
 
         # Список ключевых полей
         key_fields_list = set()
         for key_field in key_fields:
-            key_fields_list.add(key_field['field'])
+            key_fields_list.add(key_field["field"])
 
         # Список игнорируемых полей
         ignore_fields_list = set()
         for param_field in param_fields:
-            if param_field.get('import_ignore', True):
-                ignore_fields_list.add(param_field['field'])
+            if param_field.get("import_ignore", True):
+                ignore_fields_list.add(param_field["field"])
         # Список параметризированных полей и проверка GenericFields
         field_names = {field.name: field for field in fields}
         base_field_names = [param_field["field"].split(".")[0] for param_field in param_fields]
@@ -210,20 +216,19 @@ class XLSParser:
             if base_name in field_names and isinstance(field_names[base_name], GenericForeignKey):
                 parameterized_fields[param_field["field"]] = field_names[base_name].ct_field
                 if parameterized_fields[param_field["field"]] not in base_field_names:
-                    raise Exception(f"Не обнаружен тип поля {param_field['field']} в параметрах")
+                    raise ValueError(f"Не обнаружен тип поля {param_field['field']} в параметрах")
             if base_name in generic_fk_fields and generic_fk_fields[base_name].ct_field not in base_field_names:
-                raise Exception(f"Не обнаружен тип поля {param_field['field']} в параметрах")
+                raise ValueError(f"Не обнаружен тип поля {param_field['field']} в параметрах")
 
         # Для update_or_create
         result_query = dict()
 
         def dict_merge(dct, merge_dct):
-            for k, v in merge_dct.items():
-                if (k in dct and isinstance(dct[k], dict)
-                        and isinstance(merge_dct[k], Mapping)):
-                    dict_merge(dct[k], merge_dct[k])
+            for key in merge_dct.keys():
+                if key in dct and isinstance(dct[key], dict) and isinstance(merge_dct[key], Mapping):
+                    dict_merge(dct[key], merge_dct[key])
                 else:
-                    dct[k] = merge_dct[k]
+                    dct[key] = merge_dct[key]
 
         query = dict()
         defaults = dict()
@@ -263,36 +268,35 @@ class XLSParser:
                 self.cache_dict.update({cache_tuple: target_object})
 
         with transaction.atomic():
+
             def compile_expression(expression):
-                return compile(expression, f'm2m_set', 'exec')
+                return compile(expression, "m2m_set", "exec")
 
             def exec_expression(expression, target_object, m2m=None):
-                locals_ = {
-                    'target_object': target_object,
-                    'm2m': m2m
-                }
+                locals_ = {"target_object": target_object, "m2m": m2m}
                 exec(compile_expression(expression), None, locals_)
-                return locals_.get('result', None)
+                return locals_.get("result", None)
+
             try:
-                error_key = ''
+                error_key = ""
                 if target_object:
                     for key, value in defaults.items():
                         error_key = key
                         setattr(target_object, key, value)
                     # Установка значений JSON полей
-                    for k, v in json_fields_to_update.items():
-                        json_field = getattr(target_object, k)
+                    for key, value in json_fields_to_update.items():
+                        json_field = getattr(target_object, key)
                         if not json_field:
                             json_field = dict()
-                            setattr(target_object, k, json_field)
-                        dict_merge(json_field, v)
-                        error_key = k
+                            setattr(target_object, key, json_field)
+                        dict_merge(json_field, value)
+                        error_key = key
                     target_object.save()
 
                     # Установка M2M полей
                     for m2m_key, m2m_value in m2m.items():
                         error_key = m2m_key
-                        expression = f'target_object.{m2m_key}.set(m2m)'
+                        expression = f"target_object.{m2m_key}.set(m2m)"
                         exec_expression(expression, target_object, m2m_value)
                 else:
                     result_query.update(query)
@@ -304,7 +308,7 @@ class XLSParser:
                     # Установка M2M полей
                     for m2m_key, m2m_value in m2m.items():
                         error_key = m2m_key
-                        expression = f'target_object.{m2m_key}.set(m2m)'
+                        expression = f"target_object.{m2m_key}.set(m2m)"
                         exec_expression(expression, target_object, m2m_value)
                     self.created_items[target_object] = self.item_data
             except Exception as error:
@@ -356,30 +360,35 @@ class XLSParser:
             if isinstance(value, (bytes, str)):
                 if value:
                     if isinstance(value, bytes):
-                        value = value.encode('utf-8')
-                    value = value.strip().replace("'", '')
+                        value = value.encode("utf-8")
+                    value = value.strip().replace("'", "")
                 else:
-                    value = ''
+                    value = ""
             return value
 
         result = dict()
         param_fields, fields = template.get_param_fields()
-        for idx, item in enumerate(row):
+        for idx in range(len(row)):
             param_field = param_fields[idx]
-            field_path = param_field['field']
+            field_path = param_field["field"]
             model_field = None
-            if field_path.count('.') == 0:
+            if field_path.count(".") == 0:
                 model_field = template.get_model()._meta.get_field(field_path)
             attr_value = clean_value(row[idx])
             value = None
-            if 'format' in param_field and attr_value:
-                value = get_formatted_field(attr_value, param_field['format'], file_format)
+            if param_field.get("format") and attr_value is not None:  # Обрабатывать значения с пустой датой
+                value = get_formatted_field(attr_value, param_field["format"], file_format)
                 if not value and attr_value:
                     value = attr_value
-            elif model_field and hasattr(model_field, "get_internal_type") and model_field.get_internal_type() == 'DurationField':
-                # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
+            elif (
+                model_field
+                and hasattr(model_field, "get_internal_type")
+                and model_field.get_internal_type() == "DurationField"
+            ):
+                # если это простое поле типа min_value (а не table.code),
+                # и в модели там хранится продолжительность - делаем продолжительность
                 value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
-            elif attr_value:
+            elif attr_value is not None:  # Чтобы можно было импортировать "", 0 и 0.0 значения
                 value = attr_value
             result.update({field_path: value})
         return result
