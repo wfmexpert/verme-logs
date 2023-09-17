@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
+from openpyxl import load_workbook
 
 
 class CustomException(Exception):
@@ -15,6 +16,7 @@ class XLSParser:
     """
     Парсер xls-файлов
     """
+    FORMAT = "xls"
 
     def __init__(self):
         self.cache_dict = dict()
@@ -29,7 +31,7 @@ class XLSParser:
         for rownum in range(1, sheet.nrows):
             row = sheet.row_values(rownum)
             try:
-                self.item_data = self.get_struct_from_row(row, rb, template)
+                self.item_data = self.get_struct_from_row(row, rb, template, file_format=self.FORMAT)
                 self.process_item_data(template)
             except Exception as exc:
                 errors.append({"rownum": rownum, "exc": exc, "key": exc.key if hasattr(exc, "key") else ""})
@@ -315,9 +317,9 @@ class XLSParser:
         self.processed_items.add(target_object)
 
     @staticmethod
-    def get_struct_from_row(row, rb, template):
+    def get_struct_from_row(row, rb, template, file_format):
 
-        def get_formatted_field(value, format):
+        def get_formatted_field(value, format, file_format):
             if format.find(".0") != -1:
                 return get_float(value, len(format.split(".")[-1].strip()))
             elif format.find("#") != -1:
@@ -328,14 +330,17 @@ class XLSParser:
                 try:
                     formatted_value = datetime.datetime.strptime(value, format)
                 except TypeError:
-                    formatted_value = get_cell_date(value)
+                    formatted_value = get_cell_date(value, file_format)
                 return formatted_value
             else:
-                return get_cell_date(value)
+                return get_cell_date(value, file_format)
 
-        def get_cell_date(cell):
+        def get_cell_date(cell, file_format):
             try:
-                return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
+                if file_format == "xls":
+                    return str(cell).strip() and datetime.datetime(*xlrd.xldate_as_tuple(cell, rb.datemode)) or None
+                else:
+                    return str(cell).strip() or None
             except TypeError:
                 pass
 
@@ -372,7 +377,7 @@ class XLSParser:
             attr_value = clean_value(row[idx])
             value = None
             if param_field.get("format") and attr_value is not None:  # Обрабатывать значения с пустой датой
-                value = get_formatted_field(attr_value, param_field["format"])
+                value = get_formatted_field(attr_value, param_field["format"], file_format)
                 if not value and attr_value:
                     value = attr_value
             elif (
@@ -387,3 +392,21 @@ class XLSParser:
                 value = attr_value
             result.update({field_path: value})
         return result
+
+
+class XLSXParser(XLSParser):
+    FORMAT = "xlsx"
+
+    def parse(self, template, file_contents):
+        rb = load_workbook(BytesIO(file_contents))
+        sheet = rb.worksheets[0]
+        errors = []
+        for rownum, row in enumerate(sheet.iter_rows(values_only=True)):
+            if not rownum:
+                continue
+            try:
+                self.item_data = self.get_struct_from_row(row, rb, template, file_format=self.FORMAT)
+                self.process_item_data(template)
+            except Exception as exc:
+                errors.append({'rownum': rownum, 'exc': exc, 'key': exc.key if hasattr(exc, 'key') else ''})
+        return errors

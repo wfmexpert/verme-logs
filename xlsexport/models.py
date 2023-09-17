@@ -12,7 +12,7 @@ from django.db import models
 from django.http import HttpResponse
 from django.utils.timezone import get_current_timezone
 
-from .parsers import XLSParser
+from .parsers import XLSParser, XLSXParser
 
 try:
     from django.db.models import JSONField
@@ -425,7 +425,10 @@ class ExportTemplate(models.Model):
         return response
 
     def from_xlsx(self, file=None):
-        parser = XLSParser()
+        if self.format == "xls":
+            parser = XLSParser()
+        else:
+            parser = XLSXParser()
         errors = parser.parse(self, file.read())
         return errors
 
