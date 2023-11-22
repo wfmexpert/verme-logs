@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='verme-logs',
-    version='1.28.38',
+    version='1.28.39',
     packages=find_packages(),
     include_package_data=True,
     license='BSD License',  # example license
