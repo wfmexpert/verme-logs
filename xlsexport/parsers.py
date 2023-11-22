@@ -300,6 +300,10 @@ class XLSParser:
                     result_query.update(json_fields_to_update)
 
                     target_object = model.objects.create(**result_query)
+                    if target_object.pk is None:
+                        # Объект создан в "партицированной" таблице и его нужно выбрать заново т.к.
+                        # триггер, разбарсывающий записи по таблицам возвращает NULL
+                        target_object = model.objects.filter(**result_query).order_by("-id").first()                    
 
                     # Установка M2M полей
                     for m2m_key, m2m_value in m2m.items():
