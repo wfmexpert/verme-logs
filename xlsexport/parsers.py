@@ -383,7 +383,7 @@ class XLSParser:
             elif model_field and hasattr(model_field, "get_internal_type") and model_field.get_internal_type() == 'DurationField':
                 # если это простое поле типа min_value (а не table.code), и в модели там хранится продолжительность, делаем продолжительность
                 value = datetime.timedelta(minutes=int(row[idx]) if row[idx] else 0)
-            elif attr_value:
+            elif attr_value is not None:
                 value = attr_value
             result.update({field_path: value})
         return result
