@@ -330,7 +330,10 @@ class XLSParser:
                 try:
                     formatted_value = datetime.datetime.strptime(value, format)
                 except TypeError:
-                    formatted_value = get_cell_date(value, file_format)
+                    if isinstance(value, datetime.datetime) and format == '%Y-%m-%d':
+                        formatted_value = value.date()
+                    else:
+                        formatted_value = get_cell_date(value, file_format)
                 return formatted_value
             else:
                 return get_cell_date(value, file_format)
