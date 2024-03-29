@@ -7,7 +7,7 @@ import xlrd
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, DateField
 from openpyxl import load_workbook
 
 HARDCODE_DATE_FORMAT = ('%d-%m-%Y', '%d.%m.%Y', '%d/%m/%Y')
@@ -95,6 +95,8 @@ class XLSParser:
                     m2m_flag = True
                 if model:
                     processed_model_list.append(model)
+            elif isinstance(field, DateField) and isinstance(self.item_data[row_data], datetime.datetime):
+                    attr_value = self.item_data[row_data].date()
             elif isinstance(field, JSONField):
                 json_key = splitted_fields[current_idx+1]
                 attr_value = self.item_data['.'.join(splitted_fields)]
@@ -322,6 +324,8 @@ class XLSParser:
     def get_struct_from_row(row, rb, template, file_format):
 
         def get_formatted_field(value, format, file_format):
+            if isinstance(value, datetime.datetime):
+                return value
             if format.find(".0") != -1:
                 return get_float(value, len(format.split(".")[-1].strip()))
             elif format.find("#") != -1:
