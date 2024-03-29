@@ -10,8 +10,6 @@ from django.db import transaction
 from django.db.models import Q, DateField
 from openpyxl import load_workbook
 
-HARDCODE_DATE_FORMAT = ('%d-%m-%Y', '%d.%m.%Y', '%d/%m/%Y')
-
 
 class CustomException(Exception):
     pass
@@ -336,10 +334,6 @@ class XLSParser:
                 try:
                     formatted_value = datetime.datetime.strptime(value, format)
                 except TypeError:
-                    # Для случаев, когда у модели поле вида Date, а не DateTime.
-                    if isinstance(value, datetime.datetime) and format in HARDCODE_DATE_FORMAT:
-                        formatted_value = value.date()
-                    else:
                         formatted_value = get_cell_date(value, file_format)
                 return formatted_value
             else:
