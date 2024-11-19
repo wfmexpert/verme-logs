@@ -1,4 +1,5 @@
 import base64
+import logging
 from functools import wraps
 
 from django.conf import settings
@@ -57,7 +58,11 @@ def error_view(request):
 @with_saml_backend
 @psa('/saml/asc')  # тот же путь, что и у complete_view, иначе будте ошибка CSRF
 def auth_view(request, backend, *args, **kwargs):
-    return do_auth(request.backend, redirect_name=REDIRECT_FIELD_NAME)
+    try:
+        return do_auth(request.backend, redirect_name=REDIRECT_FIELD_NAME)
+    except Exception as e:
+        logging.exception("SAML auth failed.")
+        return HttpResponseRedirect(reverse(getattr(settings, 'SOCIAL_AUTH_SAML_LOGIN', 'login')))
 
 
 @never_cache
@@ -84,9 +89,13 @@ def complete_view(request, backend, *args, **kwargs):
     # Говорим social auth'у, что в рекветсе не было пользователя, так всё вроде ок.
     request_user = None  # request.user
     set_user_login_details(request, 'SAML', True)
-    return do_complete(request.backend, _do_login, request_user,
+    try:
+        return do_complete(request.backend, _do_login, request_user,
                        redirect_name=REDIRECT_FIELD_NAME, request=request,
                        *args, **kwargs)
+    except Exception as e:
+        logging.exception("SAML auth failed.")
+        return HttpResponseRedirect(reverse(getattr(settings, 'SOCIAL_AUTH_SAML_LOGIN', 'login')))
 
 
 @never_cache
