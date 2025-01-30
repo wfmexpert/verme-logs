@@ -9,7 +9,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 setup(
     name='verme-logs',
-    version='1.28.45',
+    version='1.28.46',
     packages=find_packages(),
     include_package_data=True,
     license='BSD License',  # example license
@@ -23,7 +23,7 @@ setup(
         'social-auth-app-django',
         'social-auth-core[saml]',
         'xlrd',
-        'XlsxWriter',
+        'XlsxWriter==3.2.0',
         'xlwt',
         'django-admin-list-filter-dropdown',
         'openpyxl',
