@@ -91,7 +91,7 @@ class ServerRecord(models.Model):
     tags = models.CharField(verbose_name="теги", max_length=512, blank=True, null=True)
     message = models.TextField(verbose_name="сообщение")
     params = JSONField(verbose_name="доп. информация", default=None, null=True, blank=True)
-    created_at = models.DateTimeField(verbose_name="дата создания", auto_now_add=True)
+    created_at = models.DateTimeField(verbose_name="дата создания", auto_now_add=True, db_index=True)
     request = models.TextField(verbose_name="текст запроса", blank=True, null=True)
 
     objects = CountEstimateQuerySet.as_manager()
