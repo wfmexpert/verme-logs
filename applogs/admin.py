@@ -3,7 +3,7 @@ Copyright 2019 ООО «Верме»
 
 Настройки представления моделей приложения applogs в админинстративном разделе
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 
 import xlwt
@@ -11,16 +11,19 @@ from django.contrib import admin
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.db import connections
-from django.db.models import Q
+from django.db.models import Q, Func, CharField, Value
+
 from django.db.models.query import QuerySet
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.functional import cached_property
 from django.utils.html import format_html
 from django.utils.timezone import make_naive
 from xlsexport.mixins import AdminExportMixin
 from django_admin_listfilter_dropdown.filters import DropdownFilter
 
+from wfm_admin.utils import DateFieldRangeFilter
 from .forms import ServerRecordForm
 from .models import ClientRecord, ServerRecord
 from .utils import XLSWriterUtil
@@ -157,6 +160,42 @@ class ServerRecordHeadquaterFilter(DropdownFilter):
         self.title = "Клиент"
 
 
+class CommaSeparatedListFilter(admin.SimpleListFilter):
+    title = "Тэг"
+    parameter_name = "tags"
+
+    def lookups(self, request, model_admin):
+        unique_values = (
+            model_admin.model.objects
+            .annotate(
+                single_value=Func(
+                    self.parameter_name,
+                    function='UNNEST',
+                    template='UNNEST(STRING_TO_ARRAY(%(expressions)s, \',\'))',
+                    output_field=CharField()
+                )
+            )
+            .values_list('single_value', flat=True)
+            .distinct()
+            .order_by('single_value')
+        )
+        return [(v, v) for v in unique_values if v]
+
+    def queryset(self, request, queryset):
+        selected_values = self.value()
+        if not selected_values:
+            return queryset
+
+        filter_values = [v.strip() for v in selected_values.split(",")]
+
+        from django.db.models import Q
+        q_objects = Q()
+        for value in filter_values:
+            q_objects |= Q(**{f"{self.parameter_name}__contains": value})
+
+        return queryset.filter(q_objects)
+
+
 class SourceFilter(IndexFilter):
     title = "Источник"
     parameter_name = "source"
@@ -194,6 +233,22 @@ class CountEstimatePaginator(Paginator):
     count = property(_get_count)
 
 
+class OffCountPaginator(Paginator):
+    @cached_property
+    def count(self):
+        """
+        Возвращает примерное значение количества объектов
+        """
+        if "WHERE" in str(self.object_list.query):
+            return self.object_list.count()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT reltuples::BIGINT as estimate FROM pg_class WHERE relname = %s",
+                [self.object_list.query.model._meta.db_table],
+            )
+            return int(cursor.fetchone()[0])
+
+
 @admin.register(ServerRecord)
 class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     list_display = (
@@ -201,6 +256,7 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         "headquater",
         "source",
         "method",
+        "tags",
         "level",
         "duration_rounded",
         "html_message",
@@ -208,13 +264,15 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
     readonly_fields = ("created_at_str",)
     list_filter = (("source", ServerRecordSourceFilter),
                    ("method", ServerRecordMethodFilter),
+#                   CommaSeparatedListFilter,
                    ("level", ServerRecordLevelFilter),
                    ("headquater", ServerRecordHeadquaterFilter),
+                   ("created_at", DateFieldRangeFilter),
                    )
     search_fields = ("message", "tags")
     form = ServerRecordForm
     show_full_result_count = False
-    paginator = CountEstimatePaginator
+    paginator = OffCountPaginator
 
     def html_message(self, obj):
         return format_html("<pre>{}</pre>", obj.message[:200])
@@ -243,6 +301,16 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         return obj.created_at.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
 
     created_at_str.short_description = "дата создания"
+
+    def changelist_view(self, request, extra_context=None):
+        q = request.GET.copy()
+        if "created_at__gte" not in request.GET:
+            q["created_at__gte"] = datetime.now().strftime("%Y-%m-%d")
+        if "created_at__lte" not in request.GET:
+            q["created_at__lte"] = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        request.GET = q
+        request.META["QUERY_STRING"] = request.GET.urlencode()
+        return super().changelist_view(request, extra_context=extra_context)
 
     class Media:
         css = {
