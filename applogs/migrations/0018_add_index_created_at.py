@@ -10,11 +10,11 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL(
-            "CREATE INDEX applogs_serverrecord__created_at__idx1 ON applogs_serverrecord (created_at)",
-            reverse_sql="DROP INDEX  applogs_serverrecord__created_at__idx1",
+            "CREATE INDEX IF NOT EXISTS applogs_serverrecord__created_at__idx1 ON applogs_serverrecord (created_at)",
+            reverse_sql="DROP INDEX IF EXISTS applogs_serverrecord__created_at__idx1",
         ),
         migrations.RunSQL(
-            "CREATE INDEX applogs_clientrecord__created_at__idx1 ON applogs_clientrecord (created_at)",
-            reverse_sql="DROP INDEX  applogs_clientrecord__created_at__idx1",
+            "CREATE INDEX IF NOT EXISTS applogs_clientrecord__created_at__idx1 ON applogs_clientrecord (created_at)",
+            reverse_sql="DROP INDEX IF EXISTS  applogs_clientrecord__created_at__idx1",
         ),
     ]
