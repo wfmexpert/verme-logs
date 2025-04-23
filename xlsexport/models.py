@@ -230,9 +230,12 @@ class ExportTemplate(models.Model):
                 if isinstance(attr_value, timedelta):
                     attr_value = int(attr_value.total_seconds() / 60)
                 if isinstance(attr_value, float) or isinstance(attr_value, int):
-                    if attr_format:
+                    if attr_format == '* 60':
+                        attr_value = attr_value / 60
+                    elif attr_format:
                         cell_format = workbook.add_format()
                         cell_format.set_num_format(attr_format)
+
                 if not cell_format:
                     worksheet.write(row, idx, str(attr_value))
                 else:
