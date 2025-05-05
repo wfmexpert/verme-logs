@@ -1,5 +1,8 @@
 from . import views, admin
-from django.conf.urls import url
+try:
+    from django.conf.urls import url
+except ImportError:
+    from django.urls import re_path as url
 
 urlpatterns = [
     url(r'^$', views.CreateView.as_view(), name='create'),
