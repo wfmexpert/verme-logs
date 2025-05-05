@@ -23,7 +23,7 @@ setup(
         "social-auth-app-django",
         "social-auth-core[saml]",
         "xlrd",
-        "XlsxWriter==3.2.3",
+        "XlsxWriter",
         "xlwt",
         "django-admin-list-filter-dropdown",
         "openpyxl",
