@@ -1,6 +1,9 @@
 import json
 from django import forms
-from django.contrib.postgres.forms.jsonb import JSONField
+try:
+    from django.contrib.postgres.forms.jsonb import JSONField
+except ImportError:
+    from django.forms import JSONField
 
 from .models import ExportTemplate
 

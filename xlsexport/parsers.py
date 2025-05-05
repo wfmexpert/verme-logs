@@ -1,6 +1,10 @@
 import datetime
 import re
-from collections import Mapping, defaultdict
+try:
+    from collections import Mapping, defaultdict
+except ImportError:
+    from collections import defaultdict
+    from collections.abc import Mapping
 from io import BytesIO
 
 import xlrd
