@@ -88,10 +88,10 @@ class ServerRecord(models.Model):
     source = models.CharField(verbose_name="источник", max_length=32, blank=True, null=True, db_index=True)
     method = models.CharField(verbose_name="метод", max_length=64, blank=True, null=True, db_index=True)
     duration = models.FloatField(verbose_name="продолжительность", default=0.0)
-    tags = models.CharField(verbose_name="теги", max_length=512, blank=True, null=True)
+    tags = models.CharField(verbose_name="теги", max_length=512, blank=True, null=True, db_index=True)
     message = models.TextField(verbose_name="сообщение")
     params = JSONField(verbose_name="доп. информация", default=None, null=True, blank=True)
-    created_at = models.DateTimeField(verbose_name="дата создания", auto_now_add=True)
+    created_at = models.DateTimeField(verbose_name="дата создания", auto_now_add=True, db_index=True)
     request = models.TextField(verbose_name="текст запроса", blank=True, null=True)
 
     objects = CountEstimateQuerySet.as_manager()
