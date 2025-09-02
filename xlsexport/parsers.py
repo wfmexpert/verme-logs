@@ -11,13 +11,9 @@ from io import BytesIO
 import xlrd
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import transaction
-from django.db.models import Q, DateField, DateTimeField
+from django.db.models import Q, DateField, DateTimeField, JSONField
 from openpyxl import load_workbook
 
-try:
-    from django.db.models import JSONField
-except ImportError:
-    from django.contrib.postgres.fields import JSONField
 
 class CustomException(Exception):
     pass
@@ -81,6 +77,7 @@ class XLSParser:
             if not current_idx < splitted_length:
                 break
             # Выбираем поле и модель
+            # employee, id
             current_field = splitted_fields[current_idx]
             try:
                 field = model._meta.get_field(current_field)
@@ -105,11 +102,17 @@ class XLSParser:
                   and isinstance(self.item_data[row_data], datetime.datetime)):
                 attr_value = self.item_data[row_data].date()
             elif isinstance(field, JSONField):
-                attr_value = self.item_data[current_field]
-                if attr_value is None:
-                    attr_value = "{}" # дикт не схавает
-                attr_value = json.loads(attr_value)
-                json_values[current_field] = attr_value
+                json_key = splitted_fields[current_idx + 1] if len(splitted_fields) > current_idx + 1 else \
+                splitted_fields[current_idx]
+                attr_value = self.item_data['.'.join(splitted_fields)]
+                try:
+                    attr_value = json.loads(attr_value)
+                except Exception:
+                    pass
+                if current_field in json_values:
+                    json_values[current_field][json_key] = attr_value
+                else:
+                    json_values[current_field] = attr_value
                 break
             else:
                 data_values = str(self.item_data[row_data]).split('|')
@@ -291,8 +294,16 @@ class XLSParser:
                         setattr(target_object, key, value)
                     # Установка значений JSON полей
                     for k, v in json_fields_to_update.items():
-                        setattr(target_object, k, v)
-                        error_key = k
+                        json_field = getattr(target_object, k)
+                        if not json_field:
+                            json_field = dict()
+                            setattr(target_object, k, json_field)
+
+                        if isinstance(json_field, dict) and isinstance(v, dict):
+                            dict_merge(json_field, v)
+                        elif isinstance(v, list):
+                            setattr(target_object, k, v)
+
                     target_object.save()
 
                     # Установка M2M полей
