@@ -76,8 +76,7 @@ class XLSParser:
         while True:
             if not current_idx < splitted_length:
                 break
-            # Выбираем поле и модель
-            # employee, id
+
             current_field = splitted_fields[current_idx]
             try:
                 field = model._meta.get_field(current_field)
@@ -298,7 +297,7 @@ class XLSParser:
                         if not json_field:
                             json_field = dict()
                             setattr(target_object, k, json_field)
-
+                        # мерджим дикты, а если в экселе список, то перезаписываем на него
                         if isinstance(json_field, dict) and isinstance(v, dict):
                             dict_merge(json_field, v)
                         elif isinstance(v, list):
