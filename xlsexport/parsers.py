@@ -1,4 +1,5 @@
 import datetime
+import json
 import re
 try:
     from collections import Mapping, defaultdict
@@ -9,11 +10,14 @@ from io import BytesIO
 
 import xlrd
 from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.postgres.fields.jsonb import JSONField
 from django.db import transaction
 from django.db.models import Q, DateField, DateTimeField
 from openpyxl import load_workbook
 
+try:
+    from django.db.models import JSONField
+except ImportError:
+    from django.contrib.postgres.fields import JSONField
 
 class CustomException(Exception):
     pass
@@ -101,12 +105,11 @@ class XLSParser:
                   and isinstance(self.item_data[row_data], datetime.datetime)):
                 attr_value = self.item_data[row_data].date()
             elif isinstance(field, JSONField):
-                json_key = splitted_fields[current_idx+1]
-                attr_value = self.item_data['.'.join(splitted_fields)]
-                if current_field in json_values:
-                    json_values[current_field][json_key] = attr_value
-                else:
-                    json_values[current_field] = {json_key: attr_value}
+                attr_value = self.item_data[current_field]
+                if attr_value is None:
+                    attr_value = "{}" # дикт не схавает
+                attr_value = json.loads(attr_value)
+                json_values[current_field] = attr_value
                 break
             else:
                 data_values = str(self.item_data[row_data]).split('|')
@@ -288,11 +291,7 @@ class XLSParser:
                         setattr(target_object, key, value)
                     # Установка значений JSON полей
                     for k, v in json_fields_to_update.items():
-                        json_field = getattr(target_object, k)
-                        if not json_field:
-                            json_field = dict()
-                            setattr(target_object, k, json_field)
-                        dict_merge(json_field, v)
+                        setattr(target_object, k, v)
                         error_key = k
                     target_object.save()
 
