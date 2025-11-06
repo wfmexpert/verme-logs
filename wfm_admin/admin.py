@@ -100,7 +100,7 @@ class WfmAdminSite(AdminSite):
         self.app_index_template = 'admin/wfm_admin/app_index.html'
         self._registry.update(site._registry)
 
-    def get_app_list(self, request):
+    def get_app_list(self, request, *args, **kwargs):
         """
         Вот тут то мы и подменим логику "Приложение->модели" на "Секция->модели"
         :param request:
