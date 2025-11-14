@@ -201,6 +201,7 @@ class ServerRecordAdmin(AdminExportMixin, admin.ModelAdmin):
         "headquater",
         "source",
         "method",
+        "tags",
         "level",
         "duration_rounded",
         "html_message",
