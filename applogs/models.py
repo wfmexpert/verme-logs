@@ -24,6 +24,7 @@ LEVEL_CHOICES = (
 
 
 class ClientRecord(models.Model):
+    id = models.PositiveBigIntegerField(primary_key=True)
     message = models.TextField(verbose_name="сообщение")
     user_agent = models.CharField(verbose_name="UserAgent", max_length=512)
     created_at = models.DateTimeField(verbose_name="дата создания", auto_now_add=True)
@@ -83,6 +84,7 @@ class CountEstimateQuerySet(QuerySet):
 
 
 class ServerRecord(models.Model):
+    id = models.PositiveBigIntegerField(primary_key=True)
     headquater = models.CharField(verbose_name="клиент", max_length=255, blank=True, null=True, db_index=True)
     level = models.CharField(verbose_name="важность", max_length=8, choices=LEVEL_CHOICES, default=LEVEL_CHOICES[0][0], blank=False, null=False, db_index=True,)
     source = models.CharField(verbose_name="источник", max_length=32, blank=True, null=True, db_index=True)
