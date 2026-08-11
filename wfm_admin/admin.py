@@ -100,7 +100,14 @@ class WfmAdminSite(AdminSite):
         self.app_index_template = 'admin/wfm_admin/app_index.html'
         self._registry.update(site._registry)
 
-    def get_app_list(self, request, *args, **kwargs):
+    def get_app_list(self, request, app_label=None):
+        # Если запрошена страница конкретного приложения (например, /admin/systemservices/),
+        # мы должны вернуть стандартный список, так как ядро Django ожидает list.
+        # Наша кастомная логика ниже возвращает dict с колонками, который подходит
+        # только для главной страницы /admin/.
+        if app_label is not None:
+            return super().get_app_list(request, app_label=app_label)
+
         """
         Вот тут то мы и подменим логику "Приложение->модели" на "Секция->модели"
         :param request:
